@@ -6,19 +6,22 @@ using UnityEngine.Networking.Match;
 
 public class PortalBehavior : Behavior
 {
+    public static HashSet<PortalBehavior> portalBehaviors = new HashSet<PortalBehavior>();
+
     public Camera targetCamera;
     [Space()]
     public PortalBehavior targetPortal;
-
     public Camera portalCamera;
     public Transform renderPortal;
 
+    [Header("Render Settings")]
+    public int maskId = 1; 
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
-    public float maxRenderPortalOffset = 0.02f;
-    public float minOffsetDistance = 0.03f;
 
-    protected RenderTexture renderTexture;
+    [HideInInspector]
+    public RenderTexture renderTexture;
+
     protected MeshRenderer meshRenderer;
     protected int prevSide = 0;
     protected Dictionary<PortalableBehavior, int> objectsInPortal = new Dictionary<PortalableBehavior, int>();
@@ -31,18 +34,54 @@ public class PortalBehavior : Behavior
         meshRenderer.enabled = visible;
 	}
 
+    public void SetMaskId(int maskId)
+	{
+        meshRenderer.material.SetInt("_MaskID", maskId);
+        this.maskId = maskId;
+	}
+
+    public virtual void RenderCamera()
+    {
+        targetPortal.SetVisible(false);
+
+        portalCamera.enabled = true;
+
+        portalCamera.Render();
+
+        portalCamera.enabled = false;
+
+        targetPortal.SetVisible(true);
+    }
+
+
+    protected virtual void Start()
+	{
+        SetMaskId(maskId);
+        portalCamera.enabled = false;
+    }
+
     protected virtual void LateUpdate()
     {
         UpdateRenderTexture();
         UpdateCameraTransform();
         CalculateObliqueMatrix();
         //OffsetRenderPortal();
-        Render();
     }
 
     protected virtual void FixedUpdate()
 	{
         CheckForPortalCrossings();
+    }
+
+    protected virtual void OnEnable()
+	{
+        portalBehaviors.Add(this);
+	}
+
+    protected virtual void OnDisable()
+    {
+        portalBehaviors.Remove(this);
+        CleanUp();
     }
 
     protected virtual void OnTriggerEnter(Collider other)
@@ -109,31 +148,6 @@ public class PortalBehavior : Behavior
 		}
     }
 
-    protected virtual void OffsetRenderPortal()
-	{
-        if (distanceFromCameraToPortal <= targetCamera.nearClipPlane)
-        {
-            float normalizedDistance = distanceFromCameraToPortal / targetCamera.nearClipPlane;
-            int direction = GetCameraSide();
-            Vector3 position = renderPortal.localPosition;
-            position.y = (1 - normalizedDistance) * direction * maxRenderPortalOffset;
-            renderPortal.localPosition = position;
-        }
-	}
-
-    protected virtual void Render()
-	{
-        targetPortal.SetVisible(false);
-
-        portalCamera.enabled = true;
-
-        portalCamera.Render();
-
-        portalCamera.enabled = false;
-
-        targetPortal.SetVisible(true);
-    }
-
     protected virtual int GetCameraSide()
 	{
         return GetSide(targetCamera.transform);
@@ -181,6 +195,12 @@ public class PortalBehavior : Behavior
 		{
             objectsInPortal.Remove(portalableBehavior);
 		}
+	}
+
+    protected virtual void CleanUp()
+	{
+        renderTexture.Release();
+        Destroy(meshRenderer.material);
 	}
 
     protected override void GetComponents()

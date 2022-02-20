@@ -1,8 +1,8 @@
-Shader "Portals/Portal" 
+Shader "Portals/Portal Mask" 
 {
 	Properties
 	{
-		_MainTex ("Texture", 2D) = "black" {}
+		_Color ("Color", Color) = (1, 1, 1, 1)
 		_MaskID ("Mask ID", Int) = 1
 	}
 
@@ -10,16 +10,23 @@ Shader "Portals/Portal"
 	{
 		Cull Off
 
+		ColorMask 0
+
+		Offset -1, -1
+
 		Tags
 		{ 
 			"RenderType" = "Opaque" 
-			"Queue" = "Overlay+1"
+			"Queue" = "Overlay"
 		}
+
+		//ColorMask 0
 
 		Stencil 
 		{
 			Ref [_MaskID]
-			Comp Equal
+			Comp Always
+			Pass Replace
 		}
 
 		Pass 
@@ -38,6 +45,7 @@ Shader "Portals/Portal"
 
 			sampler2D _MainTex;
             float4 _MainTex_ST;
+			fixed4 _Color;
 
 			v2f vert (appdata_base v) 
 			{
@@ -49,8 +57,7 @@ Shader "Portals/Portal"
 
 			fixed4 frag(v2f i) : SV_Target 
 			{
-				fixed4 col = tex2D(_MainTex, i.uv.xy);
-				return col;
+				return _Color;
 			}
 
 			ENDCG

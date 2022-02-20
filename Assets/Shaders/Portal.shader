@@ -10,12 +10,6 @@ Shader "Portals/Portal"
 	{
 		Cull Off
 
-		Stencil 
-		{
-			Ref 1
-			Comp Equal
-		}
-
 		Pass 
 		{
 			CGPROGRAM

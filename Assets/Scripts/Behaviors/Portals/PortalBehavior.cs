@@ -6,6 +6,8 @@ using UnityEngine.Networking.Match;
 
 public class PortalBehavior : Behavior
 {
+    public static List<PortalBehavior> portalBehaviors = new List<PortalBehavior>();
+
     public Camera targetCamera;
     [Space()]
     public PortalBehavior targetPortal;
@@ -30,6 +32,16 @@ public class PortalBehavior : Behavior
 	{
         meshRenderer.enabled = visible;
 	}
+
+    public virtual void Render()
+    {
+        CameraRender();
+    }
+
+    public virtual void PostRender()
+    {
+
+    }
 
     protected virtual void LateUpdate()
     {
@@ -64,10 +76,33 @@ public class PortalBehavior : Behavior
         }
     }
 
+    protected virtual void OnEnable()
+	{
+        AddToPortals();
+	}
+
+    protected virtual void OnDisable()
+    {
+        RemoveToPortals();
+    }
+
     protected Matrix4x4 GetOtherPortalTransformMatrix()
 	{
         return targetPortal.transform.localToWorldMatrix * transform.worldToLocalMatrix;
 
+    }
+
+    protected virtual void CameraRender()
+    {
+        targetPortal.SetVisible(false);
+
+        portalCamera.enabled = true;
+
+        portalCamera.Render();
+
+        portalCamera.enabled = false;
+
+        targetPortal.SetVisible(true);
     }
 
     protected void TransformRelativeToOtherPortal(Vector3 objPosition, Quaternion objRotation, out Vector3 position, out Quaternion rotation)
@@ -138,19 +173,6 @@ public class PortalBehavior : Behavior
             renderPortal.localPosition = position;
         }
 	}
-
-    protected virtual void Render()
-	{
-        targetPortal.SetVisible(false);
-
-        portalCamera.enabled = true;
-
-        portalCamera.Render();
-
-        portalCamera.enabled = false;
-
-        targetPortal.SetVisible(true);
-    }
 
     protected virtual int GetCameraSide()
 	{
@@ -228,6 +250,16 @@ public class PortalBehavior : Behavior
         int cameraSide = GetCameraSide();
         renderPortal.localScale = new Vector3(renderPortal.localScale.x, renderPortal.localScale.y, distToNearPlaneCorner);
         renderPortal.localPosition = new Vector3(0, 0, distToNearPlaneCorner * (cameraSide * .5f));
+    }
+
+    protected virtual void AddToPortals()
+	{
+        portalBehaviors.Add(this);
+	}
+
+    protected virtual void RemoveToPortals()
+    {
+        portalBehaviors.Remove(this);
     }
 
     protected override void GetComponents()

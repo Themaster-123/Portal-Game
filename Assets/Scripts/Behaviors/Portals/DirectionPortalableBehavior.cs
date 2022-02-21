@@ -27,8 +27,9 @@ public class DirectionPortalableBehavior : PortalableBehavior
 		if (unclappedRotation.y < 90 || unclappedRotation.y > 90)
 		{
 			directionBehavior.StartSmoothRotate(rotation);
-
 		}
+
+		directionBehavior.CalculateRotation();
 	}
 
 	protected override void GetComponents()

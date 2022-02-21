@@ -38,8 +38,8 @@ public class PortalBehavior : Behavior
         UpdateRenderTexture();
         UpdateCameraTransform();
         CalculateObliqueMatrix();
-        HandleClipping();
         CameraRender();
+        HandleClipping();
     }
 
     public virtual void PostRender()
@@ -117,8 +117,7 @@ public class PortalBehavior : Behavior
 
     protected Vector3 TransformDirectionRelativeToOtherPortal(Vector3 direction)
 	{
-        Matrix4x4 otherPortalMatrix = GetOtherPortalTransformMatrix();
-        return otherPortalMatrix.MultiplyVector(direction);
+        return targetPortal.transform.TransformVector(transform.InverseTransformVector(direction));
     }
 
     protected void UpdateRenderTexture()
@@ -241,11 +240,12 @@ public class PortalBehavior : Behavior
 
     protected virtual void HandleClipping()
 	{
-        float height = Mathf.Tan(targetCamera.fieldOfView * .5f * Mathf.Deg2Rad) * targetCamera.nearClipPlane;
+        float height = targetCamera.nearClipPlane * Mathf.Tan(targetCamera.fieldOfView * .5f * Mathf.Deg2Rad);
         float width = height * targetCamera.aspect;
         float distToNearPlaneCorner = new Vector3(width, height, targetCamera.nearClipPlane).magnitude;
 
         int cameraSide = GetCameraSide();
+        cameraSide = cameraSide == 0 ? 1 : cameraSide;
         renderPortal.localScale = new Vector3(renderPortal.localScale.x, renderPortal.localScale.y, distToNearPlaneCorner);
         renderPortal.localPosition = new Vector3(0, 0, distToNearPlaneCorner * (cameraSide * .5f));
     }

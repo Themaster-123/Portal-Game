@@ -35,6 +35,10 @@ public class PortalBehavior : Behavior
 
     public virtual void Render()
     {
+        UpdateRenderTexture();
+        UpdateCameraTransform();
+        CalculateObliqueMatrix();
+        HandleClipping();
         CameraRender();
     }
 
@@ -46,12 +50,6 @@ public class PortalBehavior : Behavior
     protected virtual void LateUpdate()
     {
         CheckForPortalCrossings();
-        UpdateRenderTexture();
-        UpdateCameraTransform();
-        CalculateObliqueMatrix();
-        //OffsetRenderPortal();
-        HandleClipping();
-        Render();
     }
 
     protected virtual void FixedUpdate()
@@ -260,6 +258,12 @@ public class PortalBehavior : Behavior
     protected virtual void RemoveToPortals()
     {
         portalBehaviors.Remove(this);
+    }
+
+    protected virtual void CleanUp()
+    {
+        renderTexture.Release();
+        Destroy(meshRenderer.material);
     }
 
     protected override void GetComponents()

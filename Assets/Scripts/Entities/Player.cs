@@ -5,6 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(InputBehavior))]
 [RequireComponent(typeof(MovementBehavior))]
 [RequireComponent(typeof(DirectionBehavior))]
+[RequireComponent(typeof(DirectionPortalableBehavior))]
 public class Player : MonoBehaviour
 {
 	protected InputBehavior inputBehavior;

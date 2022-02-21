@@ -33,16 +33,17 @@ public class PortalBehavior : Behavior
 
     protected virtual void LateUpdate()
     {
+        CheckForPortalCrossings();
         UpdateRenderTexture();
         UpdateCameraTransform();
         CalculateObliqueMatrix();
         //OffsetRenderPortal();
+        HandleClipping();
         Render();
     }
 
     protected virtual void FixedUpdate()
 	{
-        CheckForPortalCrossings();
     }
 
     protected virtual void OnTriggerEnter(Collider other)
@@ -50,7 +51,7 @@ public class PortalBehavior : Behavior
         PortalableBehavior portalableBehavior = other.GetComponent<PortalableBehavior>();
         if (portalableBehavior)
 		{
-            objectsInPortal.Add(portalableBehavior, GetSide(portalableBehavior.transform));
+            OnPortableEnter(portalableBehavior);
 		}
 	}
 
@@ -59,15 +60,32 @@ public class PortalBehavior : Behavior
         PortalableBehavior portalableBehavior = other.GetComponent<PortalableBehavior>();
         if (portalableBehavior)
         {
-            objectsInPortal.Remove(portalableBehavior);
+            OnPortableExit(portalableBehavior);
         }
     }
 
-    protected void TransformRelativeToOtherPortal(Transform obj, out Vector3 position, out Quaternion rotation)
+    protected Matrix4x4 GetOtherPortalTransformMatrix()
 	{
-        Matrix4x4 portalCameraMatrix = targetPortal.transform.localToWorldMatrix * transform.worldToLocalMatrix * obj.transform.localToWorldMatrix;
+        return targetPortal.transform.localToWorldMatrix * transform.worldToLocalMatrix;
+
+    }
+
+    protected void TransformRelativeToOtherPortal(Vector3 objPosition, Quaternion objRotation, out Vector3 position, out Quaternion rotation)
+	{
+        Matrix4x4 portalCameraMatrix = GetOtherPortalTransformMatrix() * Matrix4x4.TRS(objPosition, objRotation, Vector3.one);
         position = new Vector3(portalCameraMatrix.m03, portalCameraMatrix.m13, portalCameraMatrix.m23);
         rotation = portalCameraMatrix.rotation;
+    }
+
+    protected void TransformRelativeToOtherPortal(Transform obj, out Vector3 position, out Quaternion rotation)
+    {
+        TransformRelativeToOtherPortal(obj.position, obj.rotation, out position, out rotation);
+    }
+
+    protected Vector3 TransformDirectionRelativeToOtherPortal(Vector3 direction)
+	{
+        Matrix4x4 otherPortalMatrix = GetOtherPortalTransformMatrix();
+        return otherPortalMatrix.MultiplyVector(direction);
     }
 
     protected void UpdateRenderTexture()
@@ -141,7 +159,23 @@ public class PortalBehavior : Behavior
 
     protected virtual int GetSide(Transform obj)
     {
-        return -Math.Sign(Vector3.Dot(transform.forward, (obj.position - transform.position).normalized));
+        return GetSide(obj.position);
+    }
+
+    protected virtual int GetSide(Vector3 position)
+	{
+        return -Math.Sign(Vector3.Dot(transform.forward, (position - transform.position).normalized));
+    }
+
+    protected virtual void OnPortableEnter(PortalableBehavior portalableBehavior)
+	{
+        if (objectsInPortal.ContainsKey(portalableBehavior)) return;
+        objectsInPortal.Add(portalableBehavior, GetSide(portalableBehavior.GetTravelPosition()));
+    }
+
+    protected virtual void OnPortableExit(PortalableBehavior portalableBehavior)
+    {
+        objectsInPortal.Remove(portalableBehavior);
     }
 
     protected virtual void CheckForPortalCrossings()
@@ -158,14 +192,16 @@ public class PortalBehavior : Behavior
                 continue;
 			}
 
-            int currentSide = GetSide(portalableBehavior.transform);
+            int currentSide = GetSide(portalableBehavior.GetTravelPosition());
 
-            if (currentSide != 0 && currentSide != kvp.Value)
+            if (currentSide != 0 && currentSide != kvp.Value && kvp.Value != 0)
 			{
-                TransformRelativeToOtherPortal(portalableBehavior.transform, out Vector3 position, out Quaternion rotation);
-                portalableBehavior.transform.position = position;
-                portalableBehavior.transform.rotation = rotation;
-                objectsInPortalToRemove.Remove(portalableBehavior);
+                TransformRelativeToOtherPortal(portalableBehavior.transform.position, portalableBehavior.GetRotation(), out Vector3 position, out Quaternion rotation);
+                Vector3 oldVelocity = portalableBehavior.rigidbody.velocity;
+                portalableBehavior.SetPositionAndRotation(position, rotation);
+                portalableBehavior.rigidbody.velocity = TransformDirectionRelativeToOtherPortal(oldVelocity);
+                targetPortal.OnPortableEnter(portalableBehavior);
+                objectsInPortalToRemove.Add(portalableBehavior);
                 continue;
             }
 
@@ -182,6 +218,17 @@ public class PortalBehavior : Behavior
             objectsInPortal.Remove(portalableBehavior);
 		}
 	}
+
+    protected virtual void HandleClipping()
+	{
+        float height = Mathf.Tan(targetCamera.fieldOfView * .5f * Mathf.Deg2Rad) * targetCamera.nearClipPlane;
+        float width = height * targetCamera.aspect;
+        float distToNearPlaneCorner = new Vector3(width, height, targetCamera.nearClipPlane).magnitude;
+
+        int cameraSide = GetCameraSide();
+        renderPortal.localScale = new Vector3(renderPortal.localScale.x, renderPortal.localScale.y, distToNearPlaneCorner);
+        renderPortal.localPosition = new Vector3(0, 0, distToNearPlaneCorner * (cameraSide * .5f));
+    }
 
     protected override void GetComponents()
 	{

@@ -10,6 +10,8 @@ Shader "Portals/Portal"
 	{
 		Cull Off
 
+		Offset -1, -1
+
 		Pass 
 		{
 			CGPROGRAM

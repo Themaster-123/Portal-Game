@@ -11,6 +11,12 @@ public class DirectionBehavior : Behavior
     [HideInInspector]
     public Vector2 rotation;
 
+    public float smoothSpeed = 1;
+
+    protected float smoothAmount = 1;
+    protected Quaternion orginalRotation = Quaternion.identity;
+    protected Quaternion targetRotation = Quaternion.identity;
+
     // rotates the entity using rotation parameter
     public virtual void Rotate(Vector2 rotation)
     {
@@ -22,7 +28,7 @@ public class DirectionBehavior : Behavior
     // calculates rotations off of rotation variable
     public virtual void CalculateRotation()
     {
-        rotationTransform.localRotation = Quaternion.Euler(new Vector3(rotateOnYAxis ? rotation.y : 0, rotateOnXAxis ? rotation.x : 0, 0));
+        rotationTransform.localRotation =  Quaternion.Slerp(orginalRotation, targetRotation, smoothAmount) * (Quaternion.Inverse(targetRotation) * GetAxisRotation());
     }
 
     // gets the Horzontal Direction based off of the rotation variable
@@ -47,4 +53,27 @@ public class DirectionBehavior : Behavior
     {
         return transform.rotation * Quaternion.Euler(rotation.y, rotation.x, 0);
     }
+
+    public virtual void StartSmoothRotate(Quaternion rotation)
+	{
+        orginalRotation = rotation;
+        targetRotation = GetAxisRotation();
+        smoothAmount = 0;
+	}
+
+    public virtual Quaternion GetAxisRotation()
+	{
+        return Quaternion.Euler(new Vector3(rotateOnYAxis ? rotation.y : 0, rotateOnXAxis ? rotation.x : 0, 0));
+    }
+
+    protected virtual void Update()
+    {
+        StepSmoothCamera();
+    }
+
+    protected virtual void StepSmoothCamera()
+	{
+        smoothAmount += Time.deltaTime / smoothSpeed;
+        CalculateRotation();
+	}
 }

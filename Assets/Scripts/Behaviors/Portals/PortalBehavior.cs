@@ -17,8 +17,6 @@ public class PortalBehavior : Behavior
 
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
-    public float maxRenderPortalOffset = 0.02f;
-    public float minOffsetDistance = 0.03f;
 
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
@@ -33,12 +31,12 @@ public class PortalBehavior : Behavior
         meshRenderer.enabled = visible;
 	}
 
-    public virtual void Render()
+    public virtual void Render(int recursionLimit)
     {
         UpdateRenderTexture();
         UpdateCameraTransform();
         CalculateObliqueMatrix();
-        CameraRender();
+        RecursiveRender(recursionLimit);
         HandleClipping();
     }
 
@@ -90,9 +88,48 @@ public class PortalBehavior : Behavior
 
     }
 
-    protected virtual void CameraRender()
+    protected virtual void RecursiveRender(int recursionLimit)
+	{
+        Matrix4x4[] portalCameraMatrices = new Matrix4x4[recursionLimit];
+
+        Matrix4x4 currentPortalCameraMatrix = targetCamera.transform.localToWorldMatrix;
+
+        int startIndex = 0;
+        for (int i = 0; i < recursionLimit; i++)
+		{
+            if (i > 0 && !CameraUtils.BoundsOverlap(targetPortal.meshRenderer, meshRenderer, portalCamera)) {
+                goto EndLoop;
+			}
+            startIndex = i;
+            currentPortalCameraMatrix = targetPortal.transform.localToWorldMatrix * transform.worldToLocalMatrix * currentPortalCameraMatrix;
+            portalCameraMatrices[i] = currentPortalCameraMatrix;
+
+            GetPositionAndRotationFromMatrix(portalCameraMatrices[i], out Vector3 position, out Quaternion rotation);
+            portalCamera.transform.SetPositionAndRotation(position, rotation);
+
+        }
+        EndLoop:
+
+        meshRenderer.material.SetInt("_DisplayMask", 0);
+
+        for (int i = startIndex; i >= 0; i--)
+		{
+            GetPositionAndRotationFromMatrix(portalCameraMatrices[i], out Vector3 position, out Quaternion rotation);
+            portalCamera.transform.SetPositionAndRotation(position, rotation);
+            CalculateObliqueMatrix();
+
+            CameraRender(false);
+
+            if (i == startIndex)
+			{
+                meshRenderer.material.SetInt("_DisplayMask", 1);
+			}
+		}
+    }
+
+    protected virtual void CameraRender(bool canSeeSelf)
     {
-        targetPortal.SetVisible(false);
+        targetPortal.SetVisible(canSeeSelf);
 
         portalCamera.enabled = true;
 
@@ -106,13 +143,18 @@ public class PortalBehavior : Behavior
     protected void TransformRelativeToOtherPortal(Vector3 objPosition, Quaternion objRotation, out Vector3 position, out Quaternion rotation)
 	{
         Matrix4x4 portalCameraMatrix = GetOtherPortalTransformMatrix() * Matrix4x4.TRS(objPosition, objRotation, Vector3.one);
-        position = new Vector3(portalCameraMatrix.m03, portalCameraMatrix.m13, portalCameraMatrix.m23);
-        rotation = portalCameraMatrix.rotation;
+        GetPositionAndRotationFromMatrix(portalCameraMatrix, out position, out rotation);
     }
 
     protected void TransformRelativeToOtherPortal(Transform obj, out Vector3 position, out Quaternion rotation)
     {
         TransformRelativeToOtherPortal(obj.position, obj.rotation, out position, out rotation);
+    }
+
+    protected void GetPositionAndRotationFromMatrix(Matrix4x4 matrix, out Vector3 position, out Quaternion rotation)
+	{
+        position = new Vector3(matrix.m03, matrix.m13, matrix.m23);
+        rotation = matrix.rotation;
     }
 
     protected Vector3 TransformDirectionRelativeToOtherPortal(Vector3 direction)
@@ -158,18 +200,6 @@ public class PortalBehavior : Behavior
             portalCamera.projectionMatrix = targetCamera.projectionMatrix;
 		}
     }
-
-    protected virtual void OffsetRenderPortal()
-	{
-        if (distanceFromCameraToPortal <= targetCamera.nearClipPlane)
-        {
-            float normalizedDistance = distanceFromCameraToPortal / targetCamera.nearClipPlane;
-            int direction = GetCameraSide();
-            Vector3 position = renderPortal.localPosition;
-            position.y = (1 - normalizedDistance) * direction * maxRenderPortalOffset;
-            renderPortal.localPosition = position;
-        }
-	}
 
     protected virtual int GetCameraSide()
 	{
@@ -266,7 +296,50 @@ public class PortalBehavior : Behavior
         Destroy(meshRenderer.material);
     }
 
-    protected override void GetComponents()
+    protected virtual void OnDrawGizmos()
+	{
+		if (Application.isPlaying)
+		{
+            //Bounds bounds = meshRenderer.bounds;
+            /*			Vector3 min = targetCamera.WorldToScreenPoint(bounds.min);
+                        min.z = 3;
+                        min = targetCamera.ScreenToWorldPoint(min);
+
+                        Vector3 max = targetCamera.WorldToScreenPoint(bounds.max);
+                        max.z = 4;
+                        max = targetCamera.ScreenToWorldPoint(max);
+
+                        bounds.min = min;
+                        bounds.max = max;*/
+
+/*            Bounds bounds = new Bounds();
+            rectBounds.min.z = 1;
+            rectBounds.max.z = 1;
+            bounds.min = targetCamera.ScreenToWorldPoint(rectBounds.min);
+            bounds.max = targetCamera.ScreenToWorldPoint(rectBounds.max);
+
+
+            Gizmos.DrawWireCube(bounds.center, bounds.size);*/
+		}
+	}
+
+/*	private void OnGUI()
+	{
+        CameraUtils.ScreenSpaceBounds rectBounds = CameraUtils.GetRectFromBounds(meshRenderer, targetCamera);
+
+        rectBounds.min.y = Screen.height - rectBounds.min.y;
+        rectBounds.max.y = Screen.height - rectBounds.max.y;
+
+        Rect rect = new Rect();
+        rect.min = rectBounds.min;
+        rect.max = rectBounds.max;
+
+        GUI.Box(rect, "test");
+        print(CameraUtils.BoundsOverlap(meshRenderer, targetPortal.meshRenderer, targetCamera));
+        print(rectBounds.max.z);
+	}*/
+
+	protected override void GetComponents()
 	{
         base.GetComponents();
         meshRenderer = renderPortal.GetComponent<MeshRenderer>();

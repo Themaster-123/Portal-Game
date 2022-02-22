@@ -131,22 +131,6 @@ PrefabInstance:
     m_TransformParent: {fileID: 1407148756}
     m_Modifications:
     - target: {fileID: 3394088725564413188, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 3394088725564413188, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3394088725564413188, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3394088725564413188, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3394088725564413188, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
@@ -158,6 +142,10 @@ PrefabInstance:
       propertyPath: targetPortal
       value: 
       objectReference: {fileID: 1142981081}
+    - target: {fileID: 4176048506180272546, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
+      propertyPath: nearClipOffset
+      value: 0.05
+      objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272549, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_Name
       value: Portal2
@@ -188,7 +176,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -10.33
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1341,6 +1329,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e3b62697fe81664fa7d2e7fadf3f87d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  recursionLimit: 4
 --- !u!1 &1001116609
 GameObject:
   m_ObjectHideFlags: 0
@@ -2187,6 +2176,10 @@ PrefabInstance:
       propertyPath: targetPortal
       value: 
       objectReference: {fileID: 2099445880}
+    - target: {fileID: 4176048506180272546, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
+      propertyPath: nearClipOffset
+      value: 0.05
+      objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272549, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_Name
       value: Portal1
@@ -2213,7 +2206,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 0.69
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2221,11 +2214,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -30
+      value: -19.51
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.95029867
+      value: 0.9985367
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalRotation.x
@@ -2233,7 +2226,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.31133983
+      value: -0.054078825
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalRotation.z
@@ -2245,7 +2238,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -36.28
+      value: -6.2
       objectReference: {fileID: 0}
     - target: {fileID: 4176048506180272550, guid: 477c97f7134b2fc41b74a321ed90a178, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z

@@ -4,24 +4,45 @@ using UnityEngine;
 
 public static class CameraUtils
 {
-	public static bool BoundsOverlap(MeshRenderer near, MeshRenderer far, Camera camera)
+	static readonly Vector3[] cubeCornerOffsets = {
+		new Vector3 (1, 1, 1),
+		new Vector3 (-1, 1, 1),
+		new Vector3 (-1, -1, 1),
+		new Vector3 (-1, -1, -1),
+		new Vector3 (-1, 1, -1),
+		new Vector3 (1, -1, -1),
+		new Vector3 (1, 1, -1),
+		new Vector3 (1, -1, 1),
+	};
+
+	public static bool BoundsOverlap(MeshFilter near, MeshFilter far, Camera camera)
 	{
 		ScreenSpaceBounds nearBounds = GetRectFromBounds(near, camera);
 		ScreenSpaceBounds farBounds = GetRectFromBounds(far, camera);
 
-		if (farBounds.min.x >= nearBounds.max.x || nearBounds.min.x >= farBounds.max.x)
-			return false;
-		if (farBounds.min.y >= nearBounds.max.y || nearBounds.min.y >= farBounds.max.y)
-			return false;
-		return true;
+		if (farBounds.max.z > nearBounds.min.z)
+		{
+			if (farBounds.max.x < nearBounds.min.x || farBounds.min.x > nearBounds.max.x)
+			{
+				return false;
+			}
+			if (farBounds.max.y < nearBounds.min.y || farBounds.min.y > nearBounds.max.y)
+			{
+				return false;
+			}
+			return true;
+
+		}
+		return false;
 	}
 
-	public static ScreenSpaceBounds GetRectFromBounds(MeshRenderer meshFilter, Camera camera)
+	public static ScreenSpaceBounds GetRectFromBounds(MeshFilter meshFilter, Camera camera)
 	{
-		Vector3 cen = meshFilter.bounds.center;
-		Vector3 ext = meshFilter.bounds.extents;
-		Vector3[] extentPoints = new Vector3[8]
-		{
+		Bounds bounds = meshFilter.sharedMesh.bounds;
+		Vector3[] extentPoints = new Vector3[8];
+		bool pointsInFrontOfCamera = false;
+
+		/*{
 			camera.WorldToScreenPoint(new Vector3(cen.x - ext.x, cen.y - ext.y, cen.z - ext.z)),
 			camera.WorldToScreenPoint(new Vector3(cen.x + ext.x, cen.y - ext.y, cen.z - ext.z)),
 			camera.WorldToScreenPoint(new Vector3(cen.x - ext.x, cen.y - ext.y, cen.z + ext.z)),
@@ -30,10 +51,35 @@ public static class CameraUtils
 			camera.WorldToScreenPoint(new Vector3(cen.x + ext.x, cen.y + ext.y, cen.z - ext.z)),
 			camera.WorldToScreenPoint(new Vector3(cen.x - ext.x, cen.y + ext.y, cen.z + ext.z)),
 			camera.WorldToScreenPoint(new Vector3(cen.x + ext.x, cen.y + ext.y, cen.z + ext.z)),
-		};
+		};*/
 
-		Vector3 min = extentPoints[0];
-		Vector3 max = extentPoints[0];
+		for (int i = 0; i < 8; i++)
+		{
+			Vector3 localCorner = bounds.center + cubeCornerOffsets[i];
+			Vector3 globalCorner = meshFilter.transform.TransformPoint(localCorner);
+			Vector3 viewportCorner = camera.WorldToViewportPoint(globalCorner);
+
+			if (viewportCorner.z > 0)
+			{
+				pointsInFrontOfCamera = true;
+			} else
+			{
+				// If point is behind camera, it gets flipped to the opposite side
+				// So clamp to opposite edge to correct for this
+				viewportCorner.x = (viewportCorner.x <= 0.5f) ? 1 : 0;
+				viewportCorner.y = (viewportCorner.y <= 0.5f) ? 1 : 0;
+			}
+
+			extentPoints[i] = viewportCorner;
+		}
+
+		if (!pointsInFrontOfCamera)
+		{
+			return new ScreenSpaceBounds();
+		}
+
+		Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+		Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
 
 		foreach (Vector3 point in extentPoints)
 		{

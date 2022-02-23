@@ -206,9 +206,7 @@ MonoBehaviour:
   portalCamera: {fileID: 4176048505683191967}
   renderPortal: {fileID: 3394088725564413188}
   nearClipOffset: 0
-  nearClipLimit: 0.2
-  maxRenderPortalOffset: 1
-  minOffsetDistance: 1
+  nearClipLimit: 0
 --- !u!65 &4164138233155433754
 BoxCollider:
   m_ObjectHideFlags: 0

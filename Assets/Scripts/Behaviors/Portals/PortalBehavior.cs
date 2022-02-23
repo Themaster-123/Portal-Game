@@ -20,6 +20,7 @@ public class PortalBehavior : Behavior
 
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
+    protected MeshFilter meshFilter;
     protected int prevSide = 0;
     protected Dictionary<PortalableBehavior, int> objectsInPortal = new Dictionary<PortalableBehavior, int>();
     protected Dictionary<PortalableBehavior, int> objectsInPortalToUpdate = new Dictionary<PortalableBehavior, int>();
@@ -34,8 +35,6 @@ public class PortalBehavior : Behavior
     public virtual void Render(int recursionLimit)
     {
         UpdateRenderTexture();
-        UpdateCameraTransform();
-        CalculateObliqueMatrix();
         RecursiveRender(recursionLimit);
         HandleClipping();
     }
@@ -43,6 +42,16 @@ public class PortalBehavior : Behavior
     public virtual void PostRender()
     {
 
+    }
+
+    public virtual int GetSide(Transform obj)
+    {
+        return GetSide(obj.position);
+    }
+
+    public virtual int GetSide(Vector3 position)
+    {
+        return Math.Sign(Vector3.Dot(transform.forward, (transform.position - position)));
     }
 
     protected virtual void LateUpdate()
@@ -94,14 +103,15 @@ public class PortalBehavior : Behavior
 
         Matrix4x4 currentPortalCameraMatrix = targetCamera.transform.localToWorldMatrix;
 
+        portalCamera.projectionMatrix = targetCamera.projectionMatrix;
         int startIndex = 0;
         for (int i = 0; i < recursionLimit; i++)
 		{
-            if (i > 0 && !CameraUtils.BoundsOverlap(targetPortal.meshRenderer, meshRenderer, portalCamera)) {
+            if (i > 0 && !CameraUtils.BoundsOverlap(targetPortal.meshFilter, meshFilter, portalCamera)) {
                 goto EndLoop;
 			}
             startIndex = i;
-            currentPortalCameraMatrix = targetPortal.transform.localToWorldMatrix * transform.worldToLocalMatrix * currentPortalCameraMatrix;
+            currentPortalCameraMatrix = GetOtherPortalTransformMatrix() * currentPortalCameraMatrix;
             portalCameraMatrices[i] = currentPortalCameraMatrix;
 
             GetPositionAndRotationFromMatrix(portalCameraMatrices[i], out Vector3 position, out Quaternion rotation);
@@ -177,16 +187,9 @@ public class PortalBehavior : Behavior
 		}
 	}
 
-    protected void UpdateCameraTransform()
-	{
-        TransformRelativeToOtherPortal(targetCamera.transform, out Vector3 position, out Quaternion rotation);
-        portalCamera.transform.position = position;
-        portalCamera.transform.rotation = rotation;
-    }
-
     protected virtual void CalculateObliqueMatrix()
 	{
-        int direction = GetCameraSide();
+        int direction = GetPortalCameraSide();
         Plane plane = new Plane(targetPortal.transform.forward * direction, targetPortal.transform.position);
         Vector4 planeVector = new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.distance + nearClipOffset);
         Vector4 clipThroughSpace = Matrix4x4.Transpose(portalCamera.cameraToWorldMatrix) * planeVector;
@@ -206,25 +209,22 @@ public class PortalBehavior : Behavior
         return GetSide(targetCamera.transform);
     }
 
-    protected virtual int GetSide(Transform obj)
-    {
-        return GetSide(obj.position);
-    }
-
-    protected virtual int GetSide(Vector3 position)
+    protected virtual int GetPortalCameraSide()
 	{
-        return -Math.Sign(Vector3.Dot(transform.forward, (position - transform.position).normalized));
+        return GetSide((Matrix4x4.Inverse(GetOtherPortalTransformMatrix()) * portalCamera.transform.localToWorldMatrix).GetColumn(3));
     }
 
     protected virtual void OnPortableEnter(PortalableBehavior portalableBehavior)
-	{
+    {
         if (objectsInPortal.ContainsKey(portalableBehavior)) return;
         objectsInPortal.Add(portalableBehavior, GetSide(portalableBehavior.GetTravelPosition()));
+        portalableBehavior.OnEnterPortalArea(this);
     }
 
     protected virtual void OnPortableExit(PortalableBehavior portalableBehavior)
     {
         objectsInPortal.Remove(portalableBehavior);
+        portalableBehavior.OnExitPortalArea(this);
     }
 
     protected virtual void CheckForPortalCrossings()
@@ -249,6 +249,7 @@ public class PortalBehavior : Behavior
                 Vector3 oldVelocity = portalableBehavior.rigidbody.velocity;
                 portalableBehavior.SetPositionAndRotation(position, rotation);
                 portalableBehavior.rigidbody.velocity = TransformDirectionRelativeToOtherPortal(oldVelocity);
+
                 targetPortal.OnPortableEnter(portalableBehavior);
                 objectsInPortalToRemove.Add(portalableBehavior);
                 continue;
@@ -264,7 +265,7 @@ public class PortalBehavior : Behavior
 
         foreach (PortalableBehavior portalableBehavior in objectsInPortalToRemove)
 		{
-            objectsInPortal.Remove(portalableBehavior);
+            OnPortableExit(portalableBehavior);
 		}
 	}
 
@@ -296,52 +297,10 @@ public class PortalBehavior : Behavior
         Destroy(meshRenderer.material);
     }
 
-    protected virtual void OnDrawGizmos()
-	{
-		if (Application.isPlaying)
-		{
-            //Bounds bounds = meshRenderer.bounds;
-            /*			Vector3 min = targetCamera.WorldToScreenPoint(bounds.min);
-                        min.z = 3;
-                        min = targetCamera.ScreenToWorldPoint(min);
-
-                        Vector3 max = targetCamera.WorldToScreenPoint(bounds.max);
-                        max.z = 4;
-                        max = targetCamera.ScreenToWorldPoint(max);
-
-                        bounds.min = min;
-                        bounds.max = max;*/
-
-/*            Bounds bounds = new Bounds();
-            rectBounds.min.z = 1;
-            rectBounds.max.z = 1;
-            bounds.min = targetCamera.ScreenToWorldPoint(rectBounds.min);
-            bounds.max = targetCamera.ScreenToWorldPoint(rectBounds.max);
-
-
-            Gizmos.DrawWireCube(bounds.center, bounds.size);*/
-		}
-	}
-
-/*	private void OnGUI()
-	{
-        CameraUtils.ScreenSpaceBounds rectBounds = CameraUtils.GetRectFromBounds(meshRenderer, targetCamera);
-
-        rectBounds.min.y = Screen.height - rectBounds.min.y;
-        rectBounds.max.y = Screen.height - rectBounds.max.y;
-
-        Rect rect = new Rect();
-        rect.min = rectBounds.min;
-        rect.max = rectBounds.max;
-
-        GUI.Box(rect, "test");
-        print(CameraUtils.BoundsOverlap(meshRenderer, targetPortal.meshRenderer, targetCamera));
-        print(rectBounds.max.z);
-	}*/
-
 	protected override void GetComponents()
 	{
         base.GetComponents();
         meshRenderer = renderPortal.GetComponent<MeshRenderer>();
+        meshFilter = renderPortal.GetComponent<MeshFilter>();
 	}
 }

@@ -54,6 +54,17 @@ public class PortalBehavior : Behavior
         return Math.Sign(Vector3.Dot(transform.forward, (transform.position - position)));
     }
 
+    public void TransformRelativeToOtherPortal(Vector3 objPosition, Quaternion objRotation, out Vector3 position, out Quaternion rotation)
+	{
+        Matrix4x4 portalCameraMatrix = GetOtherPortalTransformMatrix() * Matrix4x4.TRS(objPosition, objRotation, Vector3.one);
+        GetPositionAndRotationFromMatrix(portalCameraMatrix, out position, out rotation);
+    }
+
+    public void TransformRelativeToOtherPortal(Transform obj, out Vector3 position, out Quaternion rotation)
+    {
+        TransformRelativeToOtherPortal(obj.position, obj.rotation, out position, out rotation);
+    }
+
     protected virtual void LateUpdate()
     {
         CheckForPortalCrossings();
@@ -139,7 +150,7 @@ public class PortalBehavior : Behavior
 
     protected virtual void CameraRender(bool canSeeSelf)
     {
-        targetPortal.SetVisible(canSeeSelf);
+        targetPortal.meshRenderer.shadowCastingMode = canSeeSelf ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
 
         portalCamera.enabled = true;
 
@@ -147,18 +158,7 @@ public class PortalBehavior : Behavior
 
         portalCamera.enabled = false;
 
-        targetPortal.SetVisible(true);
-    }
-
-    protected void TransformRelativeToOtherPortal(Vector3 objPosition, Quaternion objRotation, out Vector3 position, out Quaternion rotation)
-	{
-        Matrix4x4 portalCameraMatrix = GetOtherPortalTransformMatrix() * Matrix4x4.TRS(objPosition, objRotation, Vector3.one);
-        GetPositionAndRotationFromMatrix(portalCameraMatrix, out position, out rotation);
-    }
-
-    protected void TransformRelativeToOtherPortal(Transform obj, out Vector3 position, out Quaternion rotation)
-    {
-        TransformRelativeToOtherPortal(obj.position, obj.rotation, out position, out rotation);
+        targetPortal.meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
     }
 
     protected void GetPositionAndRotationFromMatrix(Matrix4x4 matrix, out Vector3 position, out Quaternion rotation)

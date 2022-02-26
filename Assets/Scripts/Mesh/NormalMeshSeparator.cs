@@ -52,11 +52,8 @@ public class NormalMeshSeparator : Behavior
 			subMesh.vertices = subMeshVertices;
 			subMesh.normals = subMeshNormals;
 			subMesh.triangles = subMeshTriangles;
+			subMesh.Optimize();
 
-			foreach (int intt in subMesh.triangles)
-			{
-				print(subMesh.vertices[2]);
-			}
 			meshCollider.sharedMesh = subMesh;
 		}
 	}

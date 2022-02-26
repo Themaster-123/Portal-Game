@@ -8,11 +8,15 @@ public class PortalableBehavior : Behavior
 	public Vector3 travelOffset;
 	public new Rigidbody rigidbody;
 	public Transform modelTransform;
+	public PortalableScriptableObject portalableScriptableObject;
 
+	protected List<PortalBehavior> portals = new List<PortalBehavior>();
+	protected new Collider collider;
 	protected PortalBehavior currentPortal;
 	protected MeshRenderer meshRenderer;
 	protected Transform modelClone;
 	protected MeshRenderer cloneMeshRenderer;
+	protected Collider prevPortalWall;
 
 	public virtual Vector3 GetTravelPosition()
 	{
@@ -31,23 +35,66 @@ public class PortalableBehavior : Behavior
 
 	public virtual void OnEnterPortalArea(PortalBehavior portalBehavior)
 	{
-		currentPortal = portalBehavior;
+		portals.Add(portalBehavior);
+		GetClosestPortal();
 		modelClone.gameObject.SetActive(true);
 		UpdateClone();
+		DisableCurrentPortalWall();
+		//CheckCollideDistance();
 	}
 
 	public virtual void OnExitPortalArea(PortalBehavior portalBehavior)
 	{
-		if (portalBehavior == currentPortal)
+		portals.Remove(portalBehavior);
+		GetClosestPortal();
+		if (portals.Count == 0)
 		{
-			currentPortal = null;
 			modelClone.gameObject.SetActive(false);
+			print("test");
+			EnablePrevPortalWall();
 		}
 	}
 
 	protected virtual void LateUpdate()
 	{
+		GetClosestPortal();
 		UpdateClone();
+	}
+
+	protected void DisableCurrentPortalWall()
+	{
+		if (currentPortal != null)
+		{
+			if (prevPortalWall == currentPortal.currentWall) return;
+			EnablePrevPortalWall();
+			prevPortalWall = currentPortal.currentWall;
+			Physics.IgnoreCollision(collider, currentPortal.currentWall);
+		}
+	}
+
+	protected void EnablePrevPortalWall()
+	{
+		if (prevPortalWall != null)
+		{
+			Physics.IgnoreCollision(collider, prevPortalWall, false);
+			prevPortalWall = null;
+		}
+	}
+
+	protected virtual void GetClosestPortal()
+	{
+		float closestDistance = float.PositiveInfinity;
+		PortalBehavior closesetPortal = null;
+		foreach (PortalBehavior portal in portals)
+		{
+			float distance = portal.GetDistanceToPortal(transform.position);
+			if (distance < closestDistance)
+			{
+				closesetPortal = portal;
+				closestDistance = distance;
+			}
+		}
+		currentPortal = closesetPortal;
 	}
 
 	protected override void Awake()
@@ -56,7 +103,7 @@ public class PortalableBehavior : Behavior
 		CreateModelClone();
 	}
 
-	protected void UpdateMaterialProperties()
+	protected virtual void UpdateMaterialProperties()
 	{
 		if (currentPortal != null)
 		{
@@ -72,7 +119,7 @@ public class PortalableBehavior : Behavior
 		}
 	}
 
-	protected void UpdateClone()
+	protected virtual void UpdateClone()
 	{
 		if (currentPortal != null)
 		{
@@ -81,7 +128,7 @@ public class PortalableBehavior : Behavior
 		}
 	}
 
-	protected void CreateModelClone()
+	protected virtual void CreateModelClone()
 	{
 		modelClone = Instantiate(modelTransform, transform);
 		modelClone.gameObject.SetActive(false);
@@ -93,5 +140,6 @@ public class PortalableBehavior : Behavior
 		base.GetComponents();
 		rigidbody = GetComponent<Rigidbody>();
 		meshRenderer = modelTransform.GetComponent<MeshRenderer>();
+		collider = GetComponent<Collider>();
 	}
 }

@@ -34,22 +34,6 @@ namespace Utilites
 			return max - temp;
 		}
 
-		public static float InclusiveWrap(float a, float min, float max)
-		{
-			float wrap = a;
-
-			while (wrap > max) {
-				wrap -= max;
-			}
-
-			while (wrap < min)
-			{
-				wrap -= min;
-			}
-
-			return wrap;
-		}
-
 		public static Vector3 Abs(Vector3 vector)
 		{
 			return new Vector3(Mathf.Abs(vector.x), Mathf.Abs(vector.y), Mathf.Abs(vector.z));

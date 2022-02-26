@@ -18,6 +18,8 @@ public class PortalBehavior : Behavior
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
 
+    public Collider currentWall;
+
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
     protected MeshFilter meshFilter;
@@ -64,6 +66,11 @@ public class PortalBehavior : Behavior
     {
         TransformRelativeToOtherPortal(obj.position, obj.rotation, out position, out rotation);
     }
+
+    public float GetDistanceToPortal(Vector3 position)
+	{
+        return Vector3.Project(transform.position - position, transform.forward).magnitude;
+	}
 
     protected virtual void LateUpdate()
     {
@@ -138,6 +145,7 @@ public class PortalBehavior : Behavior
             GetPositionAndRotationFromMatrix(portalCameraMatrices[i], out Vector3 position, out Quaternion rotation);
             portalCamera.transform.SetPositionAndRotation(position, rotation);
             CalculateObliqueMatrix();
+            HandleClipping(Matrix4x4.Inverse(GetOtherPortalTransformMatrix()) * position);
 
             CameraRender(false);
 
@@ -189,20 +197,21 @@ public class PortalBehavior : Behavior
 
     protected virtual void CalculateObliqueMatrix()
 	{
-        int direction = GetPortalCameraSide();
-        Plane plane = new Plane(targetPortal.transform.forward * direction, targetPortal.transform.position);
-        Vector4 planeVector = new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.distance + nearClipOffset);
-        Vector4 clipThroughSpace = Matrix4x4.Transpose(portalCamera.cameraToWorldMatrix) * planeVector;
-        distanceFromCameraToPortal = Mathf.Abs(clipThroughSpace.w);
-        if (distanceFromCameraToPortal > nearClipLimit)
+		int direction = GetPortalCameraSide();
+		Plane plane = new Plane(targetPortal.transform.forward * direction, targetPortal.transform.position);
+		Vector4 planeVector = new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.distance + nearClipOffset);
+		Vector4 clipThroughSpace = Matrix4x4.Transpose(portalCamera.cameraToWorldMatrix) * planeVector;
+		distanceFromCameraToPortal = Mathf.Abs(clipThroughSpace.w);
+		if (distanceFromCameraToPortal > nearClipLimit)
 		{
-            Matrix4x4 projection = targetCamera.CalculateObliqueMatrix(clipThroughSpace);
-            portalCamera.projectionMatrix = projection;
-        } else
-		{
-            portalCamera.projectionMatrix = targetCamera.projectionMatrix;
+			Matrix4x4 projection = targetCamera.CalculateObliqueMatrix(clipThroughSpace);
+			portalCamera.projectionMatrix = projection;
 		}
-    }
+		else
+		{
+			portalCamera.projectionMatrix = targetCamera.projectionMatrix;
+		}
+	}
 
     protected virtual int GetCameraSide()
 	{
@@ -266,19 +275,25 @@ public class PortalBehavior : Behavior
         foreach (PortalableBehavior portalableBehavior in objectsInPortalToRemove)
 		{
             OnPortableExit(portalableBehavior);
-		}
-	}
+            objectsInPortal.Remove(portalableBehavior);
+        }
+    }
 
-    protected virtual void HandleClipping()
+    protected virtual void HandleClipping(Vector3 position)
 	{
         float height = targetCamera.nearClipPlane * Mathf.Tan(targetCamera.fieldOfView * .5f * Mathf.Deg2Rad);
         float width = height * targetCamera.aspect;
         float distToNearPlaneCorner = new Vector3(width, height, targetCamera.nearClipPlane).magnitude;
 
-        int cameraSide = GetCameraSide();
+        int cameraSide = GetSide(position);
         cameraSide = cameraSide == 0 ? 1 : cameraSide;
         renderPortal.localScale = new Vector3(renderPortal.localScale.x, renderPortal.localScale.y, distToNearPlaneCorner);
         renderPortal.localPosition = new Vector3(0, 0, distToNearPlaneCorner * (cameraSide * .5f));
+    }
+
+    protected virtual void HandleClipping()
+    {
+        HandleClipping(targetCamera.transform.position);
     }
 
     protected virtual void AddToPortals()

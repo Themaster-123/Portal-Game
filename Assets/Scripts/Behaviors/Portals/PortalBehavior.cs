@@ -28,7 +28,6 @@ public class PortalBehavior : Behavior
     public bool mainSide;
     public HashSet<Collider> collidersInPortal = new HashSet<Collider>();
     public Dictionary<Collider, Collider> shadowColliders = new Dictionary<Collider, Collider>();
-    public Dictionary<PortalableBehavior, Rigidbody> portalableShadowColliders = new Dictionary<PortalableBehavior, Rigidbody>();
 
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
@@ -365,28 +364,10 @@ public class PortalBehavior : Behavior
 			shadowColliders.Remove(colliderToRemove);
 		}
 
-        List<PortalableBehavior> portalablesToRemove = new List<PortalableBehavior>();
-        foreach (PortalableBehavior portalable in portalableShadowColliders.Keys)
-        {
-
-            if (!collidersInPortal.Contains(portalable.collider))
-            {
-                portalablesToRemove.Add(portalable);
-            }
-        }
-
-        foreach (PortalableBehavior portalableToRemove in portalablesToRemove)
-        {
-            Destroy(portalableShadowColliders[portalableToRemove].gameObject);
-            portalableShadowColliders.Remove(portalableToRemove);
-        }
-
         foreach (Collider colliderInPortal in collidersInPortal)
 		{
-            PortalableBehavior portalableBehavior = colliderInPortal.gameObject.GetComponent<PortalableBehavior>();
 
-
-            if (!shadowColliders.ContainsKey(colliderInPortal) && (!portalableBehavior || !portalableShadowColliders.ContainsKey(portalableBehavior)))
+            if (!shadowColliders.ContainsKey(colliderInPortal))
 			{
                 GameObject shadowCloneObject = new GameObject();
                 shadowCloneObject.layer = (int)Mathf.Log(portalSettings.shadowLayer.value, 2);
@@ -396,32 +377,15 @@ public class PortalBehavior : Behavior
 
                 UnityEditorInternal.ComponentUtility.CopyComponent(colliderInPortal);
                 UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
-                if (portalableBehavior)
-				{
-                    UnityEditorInternal.ComponentUtility.CopyComponent(portalableBehavior.rigidbody);
-                    UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
-                    Rigidbody rigidbody = shadowCloneObject.GetComponent<Rigidbody>();
-                    rigidbody.useGravity = false;
-                    rigidbody.mass = rigidbody.mass;
-                    portalableShadowColliders.Add(portalableBehavior, rigidbody);
-                } else
-				{
-                    shadowColliders.Add(colliderInPortal, shadowCloneObject.GetComponent<Collider>());
-				}
+                shadowColliders.Add(colliderInPortal, shadowCloneObject.GetComponent<Collider>());
 
-			} else if (!portalableBehavior)
+			} else
 			{
                 Collider shadowCollider = shadowColliders[colliderInPortal];
                 targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
                 shadowCollider.transform.position = position;
                 shadowCollider.transform.rotation = rotation;
-            } else
-			{
-                Rigidbody rigidbody = portalableShadowColliders[portalableBehavior];
-                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
-                Vector3 direction = ((position - rigidbody.transform.position) / Time.fixedDeltaTime);
-                rigidbody.velocity = direction; //TransformDirectionRelativeToOtherPortal(portalableBehavior.rigidbody.velocity);
-			}
+            }
         }
 	}
 
@@ -474,24 +438,6 @@ public class PortalBehavior : Behavior
 			{
                 Physics.IgnoreCollision(shadowCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
 			}
-        }
-
-        foreach (Rigidbody shadowRigidbody in portalableShadowColliders.Values)
-        {
-            Collider shadowCollider = shadowRigidbody.GetComponent<Collider>();
-
-            foreach (Collider collider in Resources.FindObjectsOfTypeAll<Collider>())
-            {
-                Physics.IgnoreCollision(shadowCollider, collider, true);
-
-            }
-
-            foreach (PortalableBehavior portalableBehavior in PortalableBehavior.portalableBehaviors)
-            {
-
-                Physics.IgnoreCollision(shadowCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
-
-            }
         }
     }
 

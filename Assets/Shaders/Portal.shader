@@ -10,7 +10,7 @@ Shader "Portals/Portal"
 	{
 		Cull Off
 
-		Offset -.1, -1
+		Offset -.05, -1
 
 		Pass 
 		{

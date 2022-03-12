@@ -18,7 +18,17 @@ public class PortalBehavior : Behavior
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
 
+    [Header("Collision Settings")]
     public Collider currentWall;
+    public Vector3 shadowCloneBoxSize;
+    public Vector3 shadowCloneBoxOffset;
+
+    public PortalSettings portalSettings;
+
+    public bool mainSide;
+    public HashSet<Collider> collidersInPortal = new HashSet<Collider>();
+    public Dictionary<Collider, Collider> shadowColliders = new Dictionary<Collider, Collider>();
+    public Dictionary<PortalableBehavior, Rigidbody> portalableShadowColliders = new Dictionary<PortalableBehavior, Rigidbody>();
 
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
@@ -53,7 +63,7 @@ public class PortalBehavior : Behavior
 
     public virtual int GetSide(Vector3 position)
     {
-        return Math.Sign(Vector3.Dot(transform.forward, (transform.position - position)));
+        return (int)Mathf.Sign(Vector3.Dot(transform.forward, (transform.position - position)));
     }
 
     public void TransformRelativeToOtherPortal(Vector3 objPosition, Quaternion objRotation, out Vector3 position, out Quaternion rotation)
@@ -72,6 +82,17 @@ public class PortalBehavior : Behavior
         return Vector3.Project(transform.position - position, transform.forward).magnitude;
 	}
 
+    public virtual Collider[] GetCollidersInShadowBox(int side)
+    {
+        Vector3 localOffset = shadowCloneBoxSize / 2;
+        localOffset.x = 0;
+        localOffset.y = 0;
+        localOffset += shadowCloneBoxOffset;
+        localOffset.z *= side;
+        Vector3 offset = transform.TransformDirection(localOffset);
+        return Physics.OverlapBox(transform.position + offset, shadowCloneBoxSize / 2, transform.rotation, ~portalSettings.portalMask, QueryTriggerInteraction.Ignore);
+    }
+
     protected virtual void LateUpdate()
     {
         CheckForPortalCrossings();
@@ -79,9 +100,13 @@ public class PortalBehavior : Behavior
 
     protected virtual void FixedUpdate()
 	{
+        SetCollidersInPortal();
+        UpdateColliders();
+        UpdatePhysicsColliders();
+        SetShadowCollidersCollisions();
     }
 
-    protected virtual void OnTriggerEnter(Collider other)
+	protected virtual void OnTriggerEnter(Collider other)
 	{
         PortalableBehavior portalableBehavior = other.GetComponent<PortalableBehavior>();
         if (portalableBehavior)
@@ -108,6 +133,11 @@ public class PortalBehavior : Behavior
     {
         RemoveToPortals();
     }
+
+    protected virtual void OnDrawGizmosSelected()
+	{
+        DrawCloneShadowBox();
+	}
 
     protected Matrix4x4 GetOtherPortalTransformMatrix()
 	{
@@ -311,6 +341,172 @@ public class PortalBehavior : Behavior
         renderTexture.Release();
         Destroy(meshRenderer.material);
     }
+
+    protected void SetCollidersInPortal()
+	{
+        collidersInPortal = new HashSet<Collider>(targetPortal.GetCollidersInShadowBox(mainSide ? -1 : 1));
+	}
+
+    protected void UpdateColliders()
+	{
+		List<Collider> collidersToRemove = new List<Collider>();
+		foreach (Collider collider in shadowColliders.Keys)
+		{
+
+            if (!collidersInPortal.Contains(collider))
+			{
+				collidersToRemove.Add(collider);
+			}
+		}
+
+		foreach (Collider colliderToRemove in collidersToRemove)
+		{
+			Destroy(shadowColliders[colliderToRemove].gameObject);
+			shadowColliders.Remove(colliderToRemove);
+		}
+
+        List<PortalableBehavior> portalablesToRemove = new List<PortalableBehavior>();
+        foreach (PortalableBehavior portalable in portalableShadowColliders.Keys)
+        {
+
+            if (!collidersInPortal.Contains(portalable.collider))
+            {
+                portalablesToRemove.Add(portalable);
+            }
+        }
+
+        foreach (PortalableBehavior portalableToRemove in portalablesToRemove)
+        {
+            Destroy(portalableShadowColliders[portalableToRemove].gameObject);
+            portalableShadowColliders.Remove(portalableToRemove);
+        }
+
+        foreach (Collider colliderInPortal in collidersInPortal)
+		{
+            PortalableBehavior portalableBehavior = colliderInPortal.gameObject.GetComponent<PortalableBehavior>();
+
+
+            if (!shadowColliders.ContainsKey(colliderInPortal) && (!portalableBehavior || !portalableShadowColliders.ContainsKey(portalableBehavior)))
+			{
+                GameObject shadowCloneObject = new GameObject();
+                shadowCloneObject.layer = (int)Mathf.Log(portalSettings.shadowLayer.value, 2);
+                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
+                shadowCloneObject.transform.position = position;
+                shadowCloneObject.transform.rotation = rotation;
+
+                UnityEditorInternal.ComponentUtility.CopyComponent(colliderInPortal);
+                UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
+                if (portalableBehavior)
+				{
+                    UnityEditorInternal.ComponentUtility.CopyComponent(portalableBehavior.rigidbody);
+                    UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
+                    Rigidbody rigidbody = shadowCloneObject.GetComponent<Rigidbody>();
+                    rigidbody.useGravity = false;
+                    rigidbody.mass = rigidbody.mass;
+                    portalableShadowColliders.Add(portalableBehavior, rigidbody);
+                } else
+				{
+                    shadowColliders.Add(colliderInPortal, shadowCloneObject.GetComponent<Collider>());
+				}
+
+			} else if (!portalableBehavior)
+			{
+                Collider shadowCollider = shadowColliders[colliderInPortal];
+                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
+                shadowCollider.transform.position = position;
+                shadowCollider.transform.rotation = rotation;
+            } else
+			{
+                Rigidbody rigidbody = portalableShadowColliders[portalableBehavior];
+                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
+                Vector3 direction = ((position - rigidbody.transform.position) / Time.fixedDeltaTime);
+                rigidbody.velocity = direction; //TransformDirectionRelativeToOtherPortal(portalableBehavior.rigidbody.velocity);
+			}
+        }
+	}
+
+    protected void UpdatePhysicsColliders()
+    {
+/*        List<Collider> collidersToRemove = new List<Collider>();
+        foreach (Collider collider in shadowColliders.Keys)
+        {
+            if (!collidersInPortal.Contains(collider))
+            {
+                collidersToRemove.Add(collider);
+            }
+        }
+
+        foreach (Collider colliderToRemove in collidersToRemove)
+        {
+            Destroy(shadowColliders[colliderToRemove].gameObject);
+            shadowColliders.Remove(colliderToRemove);
+        }
+
+        foreach (Collider colliderInPortal in collidersInPortal)
+        {
+            if (!shadowColliders.ContainsKey(colliderInPortal))
+            {
+                GameObject shadowCloneObject = new GameObject();
+                shadowCloneObject.layer = (int)Mathf.Log(portalSettings.shadowLayer.value, 2);
+                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
+                shadowCloneObject.transform.position = position;
+                shadowCloneObject.transform.rotation = rotation;
+
+                UnityEditorInternal.ComponentUtility.CopyComponent(colliderInPortal);
+                UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
+                shadowColliders.Add(colliderInPortal, shadowCloneObject.GetComponent<Collider>());
+            }
+            else
+            {
+                Collider shadowCollider = shadowColliders[colliderInPortal];
+                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
+                shadowCollider.transform.position = position;
+                shadowCollider.transform.rotation = rotation;
+            }
+        }*/
+    }
+
+    protected void SetShadowCollidersCollisions()
+    {
+        foreach (Collider shadowCollider in shadowColliders.Values)
+		{
+            foreach (PortalableBehavior portalableBehavior in PortalableBehavior.portalableBehaviors)
+			{
+                Physics.IgnoreCollision(shadowCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
+			}
+        }
+
+        foreach (Rigidbody shadowRigidbody in portalableShadowColliders.Values)
+        {
+            Collider shadowCollider = shadowRigidbody.GetComponent<Collider>();
+
+            foreach (Collider collider in Resources.FindObjectsOfTypeAll<Collider>())
+            {
+                Physics.IgnoreCollision(shadowCollider, collider, true);
+
+            }
+
+            foreach (PortalableBehavior portalableBehavior in PortalableBehavior.portalableBehaviors)
+            {
+
+                Physics.IgnoreCollision(shadowCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
+
+            }
+        }
+    }
+
+    protected virtual void DrawCloneShadowBox()
+	{
+        Vector3 localOffset = shadowCloneBoxSize / 2;
+        localOffset.x = 0;
+        localOffset.y = 0;
+        localOffset += shadowCloneBoxOffset;
+        localOffset.z *= mainSide ? 1 : - 1;
+        Vector3 offset = transform.TransformDirection(localOffset);
+        Gizmos.color = Color.cyan;
+        Gizmos.matrix = Matrix4x4.TRS(offset + transform.position, transform.rotation, Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, shadowCloneBoxSize);
+	}
 
 	protected override void GetComponents()
 	{

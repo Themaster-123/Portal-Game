@@ -6,5 +6,6 @@ using UnityEngine;
 public class PortalableScriptableObject : ScriptableObject
 {
 	public LayerMask portalLayer;
+	public LayerMask shadowLayer;
 	public float maxCollisionDistance = .3f;
 }

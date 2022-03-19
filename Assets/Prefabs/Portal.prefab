@@ -27,8 +27,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 983948717547002405}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.55, z: 0}
-  m_LocalScale: {x: 1, y: 0.1, z: 0.15}
+  m_LocalPosition: {x: 0, y: -1.5, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 0.15}
   m_Children: []
   m_Father: {fileID: 4617374997662966788}
   m_RootOrder: 0
@@ -301,12 +301,14 @@ MonoBehaviour:
   targetPortal: {fileID: 0}
   portalCamera: {fileID: 4176048505683191967}
   renderPortal: {fileID: 3394088725564413188}
-  nearClipOffset: 0.05
+  nearClipOffset: 0
   nearClipLimit: 0.2
+  mapMaterial: {fileID: 0}
   currentWall: {fileID: 0}
   shadowCloneBoxSize: {x: 6, y: 6, z: 6}
-  shadowCloneBoxOffset: {x: 0, y: 0, z: 0}
+  shadowCloneBoxOffset: {x: 0, y: 0, z: -0.15}
   portalSettings: {fileID: 11400000, guid: f12803107a1934c48843a799eef3b1de, type: 2}
+  firstPortal: 0
 --- !u!65 &4164138233155433754
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -318,7 +320,7 @@ BoxCollider:
   m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 3}
+  m_Size: {x: 1, y: 1, z: 6}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &6161632025399736289
 GameObject:
@@ -347,8 +349,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6161632025399736289}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.55, z: 0}
-  m_LocalScale: {x: 1, y: 0.1, z: 0.15}
+  m_LocalPosition: {x: 0, y: 1.5, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 0.15}
   m_Children: []
   m_Father: {fileID: 4617374997662966788}
   m_RootOrder: 3
@@ -442,8 +444,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6329535114926276070}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.55, y: 0, z: 0}
-  m_LocalScale: {x: 0.1, y: 1, z: 0.15}
+  m_LocalPosition: {x: -1.5, y: 0, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 0.15}
   m_Children: []
   m_Father: {fileID: 4617374997662966788}
   m_RootOrder: 1
@@ -571,8 +573,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7908327262621761537}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.55, y: 0, z: 0}
-  m_LocalScale: {x: 0.1, y: 1, z: 0.15}
+  m_LocalPosition: {x: 1.5, y: 0, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 0.15}
   m_Children: []
   m_Father: {fileID: 4617374997662966788}
   m_RootOrder: 2

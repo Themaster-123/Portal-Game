@@ -49,6 +49,22 @@ public class @InputMaster : IInputActionCollection, IDisposable
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
                     ""interactions"": ""Press""
+                },
+                {
+                    ""name"": ""FirstInteraction"",
+                    ""type"": ""Button"",
+                    ""id"": ""a6c57c7a-b87f-4a00-adef-a925029d134a"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": ""Press""
+                },
+                {
+                    ""name"": ""SecondInteraction"",
+                    ""type"": ""Button"",
+                    ""id"": ""2e120b5f-2fca-410c-b77e-282920a19e33"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": ""Press""
                 }
             ],
             ""bindings"": [
@@ -139,6 +155,28 @@ public class @InputMaster : IInputActionCollection, IDisposable
                     ""action"": ""Jump"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""d9d78003-122c-47f7-b154-ef2b25cb32d9"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""FirstInteraction"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b9d5d467-d53b-46b3-997a-1d32bc74eb1e"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SecondInteraction"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -151,6 +189,8 @@ public class @InputMaster : IInputActionCollection, IDisposable
         m_Player_MouseMovement = m_Player.FindAction("MouseMovement", throwIfNotFound: true);
         m_Player_UIMousePosition = m_Player.FindAction("UIMousePosition", throwIfNotFound: true);
         m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
+        m_Player_FirstInteraction = m_Player.FindAction("FirstInteraction", throwIfNotFound: true);
+        m_Player_SecondInteraction = m_Player.FindAction("SecondInteraction", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -204,6 +244,8 @@ public class @InputMaster : IInputActionCollection, IDisposable
     private readonly InputAction m_Player_MouseMovement;
     private readonly InputAction m_Player_UIMousePosition;
     private readonly InputAction m_Player_Jump;
+    private readonly InputAction m_Player_FirstInteraction;
+    private readonly InputAction m_Player_SecondInteraction;
     public struct PlayerActions
     {
         private @InputMaster m_Wrapper;
@@ -212,6 +254,8 @@ public class @InputMaster : IInputActionCollection, IDisposable
         public InputAction @MouseMovement => m_Wrapper.m_Player_MouseMovement;
         public InputAction @UIMousePosition => m_Wrapper.m_Player_UIMousePosition;
         public InputAction @Jump => m_Wrapper.m_Player_Jump;
+        public InputAction @FirstInteraction => m_Wrapper.m_Player_FirstInteraction;
+        public InputAction @SecondInteraction => m_Wrapper.m_Player_SecondInteraction;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -233,6 +277,12 @@ public class @InputMaster : IInputActionCollection, IDisposable
                 @Jump.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnJump;
                 @Jump.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnJump;
                 @Jump.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnJump;
+                @FirstInteraction.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnFirstInteraction;
+                @FirstInteraction.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnFirstInteraction;
+                @FirstInteraction.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnFirstInteraction;
+                @SecondInteraction.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnSecondInteraction;
+                @SecondInteraction.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnSecondInteraction;
+                @SecondInteraction.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnSecondInteraction;
             }
             m_Wrapper.m_PlayerActionsCallbackInterface = instance;
             if (instance != null)
@@ -249,6 +299,12 @@ public class @InputMaster : IInputActionCollection, IDisposable
                 @Jump.started += instance.OnJump;
                 @Jump.performed += instance.OnJump;
                 @Jump.canceled += instance.OnJump;
+                @FirstInteraction.started += instance.OnFirstInteraction;
+                @FirstInteraction.performed += instance.OnFirstInteraction;
+                @FirstInteraction.canceled += instance.OnFirstInteraction;
+                @SecondInteraction.started += instance.OnSecondInteraction;
+                @SecondInteraction.performed += instance.OnSecondInteraction;
+                @SecondInteraction.canceled += instance.OnSecondInteraction;
             }
         }
     }
@@ -259,5 +315,7 @@ public class @InputMaster : IInputActionCollection, IDisposable
         void OnMouseMovement(InputAction.CallbackContext context);
         void OnUIMousePosition(InputAction.CallbackContext context);
         void OnJump(InputAction.CallbackContext context);
+        void OnFirstInteraction(InputAction.CallbackContext context);
+        void OnSecondInteraction(InputAction.CallbackContext context);
     }
 }

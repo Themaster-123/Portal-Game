@@ -6,6 +6,8 @@ using UnityEngine;
 [RequireComponent(typeof(MovementBehavior))]
 [RequireComponent(typeof(DirectionBehavior))]
 [RequireComponent(typeof(DirectionPortalableBehavior))]
+[RequireComponent(typeof(InteractableBehavior))]
+[RequireComponent(typeof(PortalPlacerBehavior))]
 public class Player : MonoBehaviour
 {
 	protected InputBehavior inputBehavior;

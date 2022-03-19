@@ -18,6 +18,8 @@ public class PortalBehavior : Behavior
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
 
+    public Material mapMaterial;
+
     [Header("Collision Settings")]
     public Collider currentWall;
     public Vector3 shadowCloneBoxSize;
@@ -25,10 +27,10 @@ public class PortalBehavior : Behavior
 
     public PortalSettings portalSettings;
 
-    public bool mainSide;
-    public HashSet<Collider> collidersInPortal = new HashSet<Collider>();
-    public Dictionary<Collider, Collider> shadowColliders = new Dictionary<Collider, Collider>();
+    public bool firstPortal;
 
+    protected HashSet<Collider> collidersInPortal = new HashSet<Collider>();
+    protected Dictionary<Collider, Collider> shadowColliders = new Dictionary<Collider, Collider>();
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
     protected MeshFilter meshFilter;
@@ -92,6 +94,24 @@ public class PortalBehavior : Behavior
         return Physics.OverlapBox(transform.position + offset, shadowCloneBoxSize / 2, transform.rotation, ~portalSettings.portalMask, QueryTriggerInteraction.Ignore);
     }
 
+    public virtual void AddPortalable(PortalableBehavior portalableBehavior)
+    {
+        if (objectsInPortal.ContainsKey(portalableBehavior)) return;
+        objectsInPortal.Add(portalableBehavior, GetSide(portalableBehavior.GetTravelPosition()));
+        portalableBehavior.OnEnterPortalArea(this);
+    }
+
+    public virtual void RemovePortalable(PortalableBehavior portalableBehavior)
+    {
+        objectsInPortal.Remove(portalableBehavior);
+        portalableBehavior.OnExitPortalArea(this);
+    }
+
+    public virtual bool ContainsPortalable(PortalableBehavior portalableBehavior)
+	{
+        return objectsInPortal.ContainsKey(portalableBehavior);
+	}
+
     protected virtual void LateUpdate()
     {
         CheckForPortalCrossings();
@@ -101,8 +121,8 @@ public class PortalBehavior : Behavior
 	{
         SetCollidersInPortal();
         UpdateColliders();
-        UpdatePhysicsColliders();
         SetShadowCollidersCollisions();
+        CheckForPortalCrossings();
     }
 
 	protected virtual void OnTriggerEnter(Collider other)
@@ -110,7 +130,7 @@ public class PortalBehavior : Behavior
         PortalableBehavior portalableBehavior = other.GetComponent<PortalableBehavior>();
         if (portalableBehavior)
 		{
-            OnPortableEnter(portalableBehavior);
+            AddPortalable(portalableBehavior);
 		}
 	}
 
@@ -119,7 +139,7 @@ public class PortalBehavior : Behavior
         PortalableBehavior portalableBehavior = other.GetComponent<PortalableBehavior>();
         if (portalableBehavior)
         {
-            OnPortableExit(portalableBehavior);
+            RemovePortalable(portalableBehavior);
         }
     }
 
@@ -252,19 +272,6 @@ public class PortalBehavior : Behavior
         return GetSide((Matrix4x4.Inverse(GetOtherPortalTransformMatrix()) * portalCamera.transform.localToWorldMatrix).GetColumn(3));
     }
 
-    protected virtual void OnPortableEnter(PortalableBehavior portalableBehavior)
-    {
-        if (objectsInPortal.ContainsKey(portalableBehavior)) return;
-        objectsInPortal.Add(portalableBehavior, GetSide(portalableBehavior.GetTravelPosition()));
-        portalableBehavior.OnEnterPortalArea(this);
-    }
-
-    protected virtual void OnPortableExit(PortalableBehavior portalableBehavior)
-    {
-        objectsInPortal.Remove(portalableBehavior);
-        portalableBehavior.OnExitPortalArea(this);
-    }
-
     protected virtual void CheckForPortalCrossings()
 	{
         objectsInPortalToRemove.Clear();
@@ -286,10 +293,15 @@ public class PortalBehavior : Behavior
                 TransformRelativeToOtherPortal(portalableBehavior.transform.position, portalableBehavior.GetRotation(), out Vector3 position, out Quaternion rotation);
                 Vector3 oldVelocity = portalableBehavior.rigidbody.velocity;
                 portalableBehavior.SetPositionAndRotation(position, rotation);
-                portalableBehavior.rigidbody.velocity = TransformDirectionRelativeToOtherPortal(oldVelocity);
+                print(portalableBehavior.rigidbody.velocity + " " + transform.name);
 
-                targetPortal.OnPortableEnter(portalableBehavior);
+
+                targetPortal.AddPortalable(portalableBehavior);
                 objectsInPortalToRemove.Add(portalableBehavior);
+                portalableBehavior.rigidbody.velocity = TransformDirectionRelativeToOtherPortal(oldVelocity);
+                print(portalableBehavior.rigidbody.velocity + " " + transform.name);
+
+
                 continue;
             }
 
@@ -303,7 +315,7 @@ public class PortalBehavior : Behavior
 
         foreach (PortalableBehavior portalableBehavior in objectsInPortalToRemove)
 		{
-            OnPortableExit(portalableBehavior);
+            RemovePortalable(portalableBehavior);
             objectsInPortal.Remove(portalableBehavior);
         }
     }
@@ -343,7 +355,9 @@ public class PortalBehavior : Behavior
 
     protected void SetCollidersInPortal()
 	{
-        collidersInPortal = new HashSet<Collider>(targetPortal.GetCollidersInShadowBox(mainSide ? -1 : 1));
+        collidersInPortal = new HashSet<Collider>(targetPortal.GetCollidersInShadowBox(targetPortal.firstPortal ? 1 : -1));
+
+        collidersInPortal.Remove(targetPortal.currentWall);
 	}
 
     protected void UpdateColliders()
@@ -361,7 +375,7 @@ public class PortalBehavior : Behavior
 		foreach (Collider colliderToRemove in collidersToRemove)
 		{
 			Destroy(shadowColliders[colliderToRemove].gameObject);
-			shadowColliders.Remove(colliderToRemove);
+			shadowColliders.Remove(colliderToRemove) ;
 		}
 
         foreach (Collider colliderInPortal in collidersInPortal)
@@ -389,47 +403,6 @@ public class PortalBehavior : Behavior
         }
 	}
 
-    protected void UpdatePhysicsColliders()
-    {
-/*        List<Collider> collidersToRemove = new List<Collider>();
-        foreach (Collider collider in shadowColliders.Keys)
-        {
-            if (!collidersInPortal.Contains(collider))
-            {
-                collidersToRemove.Add(collider);
-            }
-        }
-
-        foreach (Collider colliderToRemove in collidersToRemove)
-        {
-            Destroy(shadowColliders[colliderToRemove].gameObject);
-            shadowColliders.Remove(colliderToRemove);
-        }
-
-        foreach (Collider colliderInPortal in collidersInPortal)
-        {
-            if (!shadowColliders.ContainsKey(colliderInPortal))
-            {
-                GameObject shadowCloneObject = new GameObject();
-                shadowCloneObject.layer = (int)Mathf.Log(portalSettings.shadowLayer.value, 2);
-                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
-                shadowCloneObject.transform.position = position;
-                shadowCloneObject.transform.rotation = rotation;
-
-                UnityEditorInternal.ComponentUtility.CopyComponent(colliderInPortal);
-                UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
-                shadowColliders.Add(colliderInPortal, shadowCloneObject.GetComponent<Collider>());
-            }
-            else
-            {
-                Collider shadowCollider = shadowColliders[colliderInPortal];
-                targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
-                shadowCollider.transform.position = position;
-                shadowCollider.transform.rotation = rotation;
-            }
-        }*/
-    }
-
     protected void SetShadowCollidersCollisions()
     {
         foreach (Collider shadowCollider in shadowColliders.Values)
@@ -447,11 +420,11 @@ public class PortalBehavior : Behavior
         localOffset.x = 0;
         localOffset.y = 0;
         localOffset += shadowCloneBoxOffset;
-        localOffset.z *= mainSide ? 1 : - 1;
+        localOffset.z *= firstPortal ? 1 : - 1;
         Vector3 offset = transform.TransformDirection(localOffset);
         Gizmos.color = Color.cyan;
-        Gizmos.matrix = Matrix4x4.TRS(offset + transform.position, transform.rotation, Vector3.one);
-        Gizmos.DrawWireCube(Vector3.zero, shadowCloneBoxSize);
+        Gizmos.matrix = Matrix4x4.TRS(offset + transform.position, transform.rotation, shadowCloneBoxSize);
+        Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
 	}
 
 	protected override void GetComponents()

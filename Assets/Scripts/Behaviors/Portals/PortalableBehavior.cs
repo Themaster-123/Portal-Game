@@ -19,7 +19,6 @@ public class PortalableBehavior : Behavior
 
 	protected List<PortalBehavior> portals = new List<PortalBehavior>();
 	protected PortalBehavior currentPortal;
-	protected List<Collider> currentShadowClones = new List<Collider>();
 	protected MeshRenderer meshRenderer;
 	protected Transform modelClone;
 	protected MeshRenderer cloneMeshRenderer;
@@ -57,6 +56,7 @@ public class PortalableBehavior : Behavior
 		{
 			modelClone.gameObject.SetActive(false);
 			ResetPortalColliders();
+			SetPortalColliders();
 		}
 	}
 
@@ -76,6 +76,12 @@ public class PortalableBehavior : Behavior
 		UpdateClone();
 	}
 
+	protected virtual void FixedUpdate()
+	{
+		PredictMovement();
+		print(rigidbody.velocity);
+	}
+
 	protected void SetPortalColliders()
 	{
 		if (currentPortal != null)
@@ -89,18 +95,11 @@ public class PortalableBehavior : Behavior
 
 	protected void ResetPortalColliders()
 	{
-		if (prevPortalWall != null)
+		if (prevPortalWall != null && (!currentPortal || prevPortalWall != currentPortal.currentWall))
 		{
 			Physics.IgnoreCollision(collider, prevPortalWall, false);
 			prevPortalWall = null;
 		}
-
-		foreach (Collider collider in currentShadowClones)
-		{
-			Destroy(collider.gameObject);
-		}
-
-		currentShadowClones.Clear();
 	}
 
 	protected virtual void GetClosestPortal()
@@ -117,6 +116,25 @@ public class PortalableBehavior : Behavior
 			}
 		}
 		currentPortal = closesetPortal;
+	}
+
+	protected virtual void PredictMovement()
+	{
+		RaycastHit[] hits = rigidbody.SweepTestAll(rigidbody.velocity.normalized, rigidbody.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Collide);
+
+		for (int i = 0; i < hits.Length; i++)
+		{
+			RaycastHit hit = hits[i];
+			if (!hit.collider.isTrigger)
+			{
+				return;
+			}
+
+			if (portalableScriptableObject.portalLayer == (portalableScriptableObject.portalLayer | (1 << hit.transform.gameObject.layer)))
+			{
+				hit.collider.gameObject.GetComponent<PortalBehavior>().AddPortalable(this);
+			}
+		}
 	}
 
 	protected override void Awake()

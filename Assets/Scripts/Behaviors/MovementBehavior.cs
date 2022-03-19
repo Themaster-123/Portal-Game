@@ -9,6 +9,8 @@ using System.Linq;
 public class MovementBehavior : Behavior
 {
     [Header("Movement Settings")]
+    [Tooltip("Clamps the velocity")]
+    public float maxVelocity = 1024;
     public float maxSpeed = 8;
     public float acceleration = 80;
     public float maxAirSpeed = 8;
@@ -111,6 +113,7 @@ public class MovementBehavior : Behavior
         PhysicsMove();
         PhysicsJump();
         PreventSlipping();
+        ClampVelocity();
 
         ClearState();
     }
@@ -279,6 +282,11 @@ public class MovementBehavior : Behavior
 		{
 			rigidBody.velocity = new Vector3(rigidBody.velocity.x, 10, rigidBody.velocity.z);
 		}*/
+	}
+
+    protected virtual void ClampVelocity()
+	{
+        rigidBody.velocity = Vector3.ClampMagnitude(rigidBody.velocity, maxVelocity);
 	}
 
     protected override void GetComponents()

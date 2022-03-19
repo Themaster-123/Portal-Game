@@ -12,4 +12,9 @@ public class Behavior : MonoBehaviour
 	protected virtual void GetComponents()
 	{
 	}
+
+	protected virtual void RegisterInput()
+	{
+
+	}
 }

@@ -55,6 +55,7 @@ public class NormalMeshSeparator : Behavior
 			subMesh.Optimize();
 
 			meshCollider.sharedMesh = subMesh;
+			meshCollider.gameObject.layer = gameObject.layer;
 		}
 	}
 

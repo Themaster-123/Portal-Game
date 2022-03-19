@@ -32,7 +32,7 @@ public class DirectionBehavior : Behavior
     }
 
     // gets the Horzontal Direction based off of the rotation variable
-    public virtual Vector3 HorizontalDirection()
+    public virtual Vector3 GetHorizontalDirection()
     {
         return transform.TransformDirection(Quaternion.AngleAxis(rotation.x, Vector3.up) * Vector3.forward);
     }

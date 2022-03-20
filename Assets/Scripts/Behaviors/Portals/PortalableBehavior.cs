@@ -79,7 +79,6 @@ public class PortalableBehavior : Behavior
 	protected virtual void FixedUpdate()
 	{
 		PredictMovement();
-		print(rigidbody.velocity);
 	}
 
 	protected void SetPortalColliders()

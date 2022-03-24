@@ -40,7 +40,7 @@ public class PortalBehavior : Behavior
     protected Dictionary<PortalableBehavior, int> objectsInPortalToUpdate = new Dictionary<PortalableBehavior, int>();
     protected HashSet<PortalableBehavior> objectsInPortalToRemove = new HashSet<PortalableBehavior>();
     protected float distanceFromCameraToPortal;
-    protected Collider[] borderColliders = new Collider[1];
+    protected Collider[] borderColliders;
 
     public void SetVisible(bool visible)
 	{
@@ -130,6 +130,7 @@ public class PortalBehavior : Behavior
         SetCollidersInPortal();
         UpdateColliders();
         SetCollidersCollisions();
+        SetBorderColliders();
         CheckForPortalCrossings();
     }
 
@@ -309,7 +310,6 @@ public class PortalBehavior : Behavior
                 portalableBehavior.rigidbody.velocity = TransformDirectionRelativeToOtherPortal(oldVelocity);
                 print(portalableBehavior.rigidbody.velocity + " " + transform.name);
 
-
                 continue;
             }
 
@@ -326,6 +326,9 @@ public class PortalBehavior : Behavior
             RemovePortalable(portalableBehavior);
             objectsInPortal.Remove(portalableBehavior);
         }
+
+        targetPortal.SetBorderColliders();
+        SetBorderColliders();
     }
 
     protected virtual void HandleClipping(Vector3 position)
@@ -419,23 +422,30 @@ public class PortalBehavior : Behavior
             {
                 Physics.IgnoreCollision(shadowCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
             }
-
-            foreach (Collider borderCollider in borderColliders)
-            {
-                Physics.IgnoreCollision(borderCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
-            }
         }
     }
 
     protected virtual void GetBorderColliders()
 	{
-        for (int i = 0; i < 1; i++)
+        borderColliders = new Collider[borderColllidersTransform.childCount];
+        for (int i = 0; i < borderColliders.Length; i++)
 		{
             print(i);
             borderColliders[i] = borderColllidersTransform.GetChild(i).GetComponent<Collider>();
             borderColliders[i].transform.localRotation = Quaternion.Euler(0, !firstPortal ? 0 : 180, 0);
 		}
 	}
+
+    protected virtual void SetBorderColliders()
+	{
+        foreach (PortalableBehavior portalableBehavior in PortalableBehavior.portalableBehaviors)
+        {
+            foreach (Collider borderCollider in borderColliders)
+            {
+                Physics.IgnoreCollision(borderCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
+            }
+        }
+    }
 
     protected virtual void DrawCloneShadowBox()
 	{

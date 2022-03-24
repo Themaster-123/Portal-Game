@@ -85,7 +85,14 @@ public class MovementBehavior : Behavior
 
         Vector3 horizontalVel = new Vector3(Vector3.Dot(rigidBody.velocity, xAxis), 0, Vector3.Dot(rigidBody.velocity, zAxis));
         Vector3 targetVelocity = direction * (IsGrounded() ? maxSpeed : maxAirSpeed);
-        Vector3 velocityDifference = targetVelocity - horizontalVel;
+        Vector3 velocityDifference = Vector3.zero;
+        if (IsGrounded())
+		{
+            velocityDifference = targetVelocity - horizontalVel;
+        } else
+		{
+            velocityDifference = Vector3.ClampMagnitude((horizontalVel + targetVelocity), maxAirSpeed) - Vector3.ClampMagnitude(horizontalVel, maxAirSpeed);
+		}
 
         Vector3 force = Vector3.ClampMagnitude(ProjectOnContactPlane(velocityDifference), (IsGrounded() ? acceleration : airAcceleration) * Time.fixedDeltaTime);
 

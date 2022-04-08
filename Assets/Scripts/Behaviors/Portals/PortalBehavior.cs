@@ -18,8 +18,6 @@ public class PortalBehavior : Behavior
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
 
-    public Material mapMaterial;
-
     [Header("Collision Settings")]
     public Collider currentWall;
     public Vector3 shadowCloneBoxSize;
@@ -30,17 +28,21 @@ public class PortalBehavior : Behavior
 
     public bool firstPortal;
 
+    [HideInInspector]
+    public bool disabled = true;
+
     protected HashSet<Collider> collidersInPortal = new HashSet<Collider>();
-    protected Dictionary<Collider, Collider> shadowColliders = new Dictionary<Collider, Collider>();
+    protected Dictionary<Collider, ShadowCloneData> shadowColliders = new Dictionary<Collider, ShadowCloneData>();
     protected RenderTexture renderTexture;
     protected MeshRenderer meshRenderer;
     protected MeshFilter meshFilter;
     protected int prevSide = 0;
     protected Dictionary<PortalableBehavior, int> objectsInPortal = new Dictionary<PortalableBehavior, int>();
     protected Dictionary<PortalableBehavior, int> objectsInPortalToUpdate = new Dictionary<PortalableBehavior, int>();
-    protected HashSet<PortalableBehavior> objectsInPortalToRemove = new HashSet<PortalableBehavior>();
+    protected HashSet<PortalableBehavior> objectsInPortalToUpdateClone = new HashSet<PortalableBehavior>();
     protected float distanceFromCameraToPortal;
     protected Collider[] borderColliders;
+    protected Material enabledMaterial;
 
     public void SetVisible(bool visible)
 	{
@@ -114,6 +116,17 @@ public class PortalBehavior : Behavior
         return objectsInPortal.ContainsKey(portalableBehavior);
 	}
 
+    public virtual void UpdateMaterial()
+	{
+        if (disabled)
+		{
+            meshRenderer.sharedMaterial = portalSettings.aloneMaterial;
+		} else
+		{
+            meshRenderer.sharedMaterial = enabledMaterial;
+		}
+	}
+
     protected override void Awake()
 	{
         base.Awake();
@@ -123,6 +136,7 @@ public class PortalBehavior : Behavior
     protected virtual void LateUpdate()
     {
         CheckForPortalCrossings();
+        UpdateMaterial();
     }
 
     protected virtual void FixedUpdate()
@@ -130,6 +144,7 @@ public class PortalBehavior : Behavior
         SetCollidersInPortal();
         UpdateColliders();
         SetCollidersCollisions();
+        SliceShadowColliders();
         SetBorderColliders();
         CheckForPortalCrossings();
     }
@@ -175,6 +190,8 @@ public class PortalBehavior : Behavior
 
     protected virtual void RecursiveRender(int recursionLimit)
 	{
+        if (disabled) return;
+
         Matrix4x4[] portalCameraMatrices = new Matrix4x4[recursionLimit];
 
         Matrix4x4 currentPortalCameraMatrix = targetCamera.transform.localToWorldMatrix;
@@ -196,7 +213,7 @@ public class PortalBehavior : Behavior
         }
         EndLoop:
 
-        meshRenderer.material.SetInt("_DisplayMask", 0);
+        enabledMaterial.SetInt("_DisplayMask", 0);
 
         for (int i = startIndex; i >= 0; i--)
 		{
@@ -209,7 +226,7 @@ public class PortalBehavior : Behavior
 
             if (i == startIndex)
 			{
-                meshRenderer.material.SetInt("_DisplayMask", 1);
+                enabledMaterial.SetInt("_DisplayMask", 1);
 			}
 		}
     }
@@ -249,7 +266,7 @@ public class PortalBehavior : Behavior
             renderTexture = new RenderTexture(Screen.width, Screen.height, 32);
             renderTexture.Create();
             portalCamera.targetTexture = renderTexture;
-            meshRenderer.material.mainTexture = renderTexture;
+            enabledMaterial.mainTexture = renderTexture;
 		}
 	}
 
@@ -283,7 +300,9 @@ public class PortalBehavior : Behavior
 
     protected virtual void CheckForPortalCrossings()
 	{
-        objectsInPortalToRemove.Clear();
+        if (disabled) return;
+
+        objectsInPortalToUpdateClone.Clear();
         objectsInPortalToUpdate.Clear();
         
         foreach (KeyValuePair<PortalableBehavior, int> kvp in objectsInPortal)
@@ -291,7 +310,7 @@ public class PortalBehavior : Behavior
             PortalableBehavior portalableBehavior = kvp.Key;
             if (portalableBehavior == null)
 			{
-                objectsInPortalToRemove.Add(portalableBehavior);
+                objectsInPortalToUpdateClone.Add(portalableBehavior);
                 continue;
 			}
 
@@ -306,10 +325,8 @@ public class PortalBehavior : Behavior
 
 
                 targetPortal.AddPortalable(portalableBehavior);
-                objectsInPortalToRemove.Add(portalableBehavior);
+                objectsInPortalToUpdateClone.Add(portalableBehavior);
                 portalableBehavior.rigidbody.velocity = TransformDirectionRelativeToOtherPortal(oldVelocity);
-                print(portalableBehavior.rigidbody.velocity + " " + transform.name);
-
                 continue;
             }
 
@@ -321,10 +338,10 @@ public class PortalBehavior : Behavior
             objectsInPortal[portalableBehavior] = objectsInPortalToUpdate[portalableBehavior];
         }
 
-        foreach (PortalableBehavior portalableBehavior in objectsInPortalToRemove)
+        foreach (PortalableBehavior portalableBehavior in objectsInPortalToUpdateClone)
 		{
-            RemovePortalable(portalableBehavior);
-            objectsInPortal.Remove(portalableBehavior);
+            portalableBehavior.UpdateClone();
+
         }
 
         targetPortal.SetBorderColliders();
@@ -361,7 +378,7 @@ public class PortalBehavior : Behavior
     protected virtual void CleanUp()
     {
         renderTexture.Release();
-        Destroy(meshRenderer.material);
+        Destroy(enabledMaterial);
     }
 
     protected void SetCollidersInPortal()
@@ -385,7 +402,7 @@ public class PortalBehavior : Behavior
 
 		foreach (Collider colliderToRemove in collidersToRemove)
 		{
-			Destroy(shadowColliders[colliderToRemove].gameObject);
+			Destroy(shadowColliders[colliderToRemove].collider.gameObject);
 			shadowColliders.Remove(colliderToRemove) ;
 		}
 
@@ -402,11 +419,16 @@ public class PortalBehavior : Behavior
 
                 UnityEditorInternal.ComponentUtility.CopyComponent(colliderInPortal);
                 UnityEditorInternal.ComponentUtility.PasteComponentAsNew(shadowCloneObject);
-                shadowColliders.Add(colliderInPortal, shadowCloneObject.GetComponent<Collider>());
+
+                MeshCollider meshCollider = shadowCloneObject.GetComponent<MeshCollider>();
+
+                ShadowCloneData shadowCloneData = new ShadowCloneData(shadowCloneObject.GetComponent<Collider>(), meshCollider, meshCollider);
+
+                shadowColliders.Add(colliderInPortal, shadowCloneData);
 
 			} else
 			{
-                Collider shadowCollider = shadowColliders[colliderInPortal];
+                Collider shadowCollider = shadowColliders[colliderInPortal].collider;
                 targetPortal.TransformRelativeToOtherPortal(colliderInPortal.transform, out Vector3 position, out Quaternion rotation);
                 shadowCollider.transform.position = position;
                 shadowCollider.transform.rotation = rotation;
@@ -418,12 +440,25 @@ public class PortalBehavior : Behavior
     {
         foreach (PortalableBehavior portalableBehavior in PortalableBehavior.portalableBehaviors)
         {
-            foreach (Collider shadowCollider in shadowColliders.Values)
+            foreach (ShadowCloneData shadowCollider in shadowColliders.Values)
             {
-                Physics.IgnoreCollision(shadowCollider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
+                Physics.IgnoreCollision(shadowCollider.collider, portalableBehavior.collider, !objectsInPortal.ContainsKey(portalableBehavior));
             }
         }
     }
+
+    protected virtual void SliceShadowColliders()
+	{
+        foreach (Collider collider in shadowColliders.Keys)
+		{
+            ShadowCloneData cloneData = shadowColliders[collider];
+            if (cloneData.sliceable)
+			{
+                MeshUtils.SliceMesh(transform.position, transform.forward * (firstPortal ? -1 : 1), cloneData.collider.transform.position, cloneData.collider.transform.rotation, ((MeshCollider)collider).sharedMesh, out _, out Mesh slicedMesh);
+                cloneData.meshCollider.sharedMesh = slicedMesh;
+			}
+		}
+	}
 
     protected virtual void GetBorderColliders()
 	{
@@ -465,5 +500,25 @@ public class PortalBehavior : Behavior
         base.GetComponents();
         meshRenderer = renderPortal.GetComponent<MeshRenderer>();
         meshFilter = renderPortal.GetComponent<MeshFilter>();
+        enabledMaterial = meshRenderer.material;
+	}
+
+    protected struct ShadowCloneData
+	{
+        public Collider collider;
+        public bool sliceable;
+        public MeshCollider meshCollider;
+
+		public ShadowCloneData(Collider collider, bool sliceable) : this()
+		{
+			this.collider = collider;
+			this.sliceable = sliceable;
+            meshCollider = null;
+		}
+
+		public ShadowCloneData(Collider collider, bool sliceable, MeshCollider mesh) : this(collider, sliceable)
+		{
+			this.meshCollider = mesh;
+		}
 	}
 }

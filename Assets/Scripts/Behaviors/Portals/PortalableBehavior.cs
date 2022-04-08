@@ -60,6 +60,17 @@ public class PortalableBehavior : Behavior
 		}
 	}
 
+	public virtual void UpdateClone()
+	{
+		if (currentPortal != null)
+		{
+			GetClosestPortal();
+			currentPortal.TransformRelativeToOtherPortal(modelTransform, out Vector3 position, out Quaternion rotation);
+			modelClone.SetPositionAndRotation(position + currentPortal.targetPortal.transform.forward * (currentPortal.targetPortal.firstPortal ? 1 : -1) * 0.001f, rotation);
+		}
+	}
+
+
 	protected void OnEnable()
 	{
 		portalableBehaviors.Add(this);
@@ -74,6 +85,8 @@ public class PortalableBehavior : Behavior
 	{
 		GetClosestPortal();
 		UpdateClone();
+		SetPortalColliders();
+		print(currentPortal + " " + portals.Count);
 	}
 
 	protected virtual void FixedUpdate()
@@ -85,7 +98,6 @@ public class PortalableBehavior : Behavior
 	{
 		if (currentPortal != null)
 		{
-			if (prevPortalWall == currentPortal.currentWall) return;
 			ResetPortalColliders();
 			prevPortalWall = currentPortal.currentWall;
 			Physics.IgnoreCollision(collider, currentPortal.currentWall);
@@ -140,15 +152,6 @@ public class PortalableBehavior : Behavior
 	{
 		base.Awake();
 		CreateModelClone();
-	}
-
-	protected virtual void UpdateClone()
-	{
-		if (currentPortal != null)
-		{
-			currentPortal.TransformRelativeToOtherPortal(modelTransform, out Vector3 position, out Quaternion rotation);
-			modelClone.SetPositionAndRotation(position, rotation);
-		}
 	}
 
 	protected virtual void CreateModelClone()

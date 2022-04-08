@@ -7,4 +7,6 @@ public class PortalSettings : ScriptableObject
 {
 	public LayerMask portalMask;
 	public LayerMask shadowLayer;
+	public Material aloneMaterial;
+	public int checkRecurseAmount = 5;
 }

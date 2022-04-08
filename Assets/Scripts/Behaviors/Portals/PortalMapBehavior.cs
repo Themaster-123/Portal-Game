@@ -22,7 +22,7 @@ public class PortalMapBehavior : Behavior
 		{
 			portalPositions[i] = portals[i].transform.position;
 			portalInverseRotations[i] = Matrix4x4.Inverse(Matrix4x4.Rotate(portals[i].transform.rotation));
-			portalSizes[i] = new Vector4(portals[i].transform.lossyScale.x, portals[i].transform.lossyScale.y, 1, 1) * .999f;
+			portalSizes[i] = new Vector4(portals[i].transform.lossyScale.x, portals[i].transform.lossyScale.y, 1, 1) * .999f * (portals[i].gameObject.activeInHierarchy ? 1 : 0);
 		}
 
 		meshRenderer.material.SetMatrixArray("_PortalInverseRotations", portalInverseRotations);

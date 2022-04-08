@@ -18,3 +18,4 @@ MonoBehaviour:
   shadowLayer:
     serializedVersion: 2
     m_Bits: 128
+  aloneMaterial: {fileID: 2100000, guid: a6ab9a31f5d52344fa407b5a3fe29d1c, type: 2}

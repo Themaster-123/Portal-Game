@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using UnityEngine;
 
 [ExecuteInEditMode]
 public class NormalMeshSeparator : Behavior
 {
-    protected MeshFilter meshFilter;
 
 	[ContextMenu("Split Mesh")]
     public void SplitMesh()
@@ -14,20 +14,50 @@ public class NormalMeshSeparator : Behavior
         GameObject splitMesh = new GameObject(name + " Split");
 		Dictionary<Vector3, List<int>> normalIndices = new Dictionary<Vector3, List<int>>(new Vector3Comparer(2));
 
-		Mesh mesh = meshFilter.sharedMesh;
+		MeshFilter[] meshFilters = GetComponentsInChildren<MeshFilter>();
 
-		int[] triangles = mesh.triangles;
 
-		for (int i = 0; i < triangles.Length; i++)
+		//int[] triangles = mesh.triangles;
+		List<int> triangles = new List<int>();
+		List<Vector3> vertices = new List<Vector3>();
+		List<Vector3> normals = new List<Vector3>();
+
+		int amount = 0;
+
+		for (int i = 0; i < meshFilters.Length; i++)
+		{
+			MeshFilter meshFilter = meshFilters[i];
+			Mesh mesh = meshFilter.sharedMesh;
+
+			int[] trianglesArray = mesh.triangles;
+			Vector3[] verticesArray = mesh.vertices;
+			Vector3[] normalsArray = mesh.normals;
+			Transform meshTransform = meshFilter.transform;
+
+			for (int j = 0; j < trianglesArray.Length; j++) {
+
+				triangles.Add(amount);
+				vertices.Add(Matrix4x4.TRS(meshTransform.position, meshTransform.rotation, meshTransform.lossyScale).MultiplyPoint(verticesArray[trianglesArray[j]]));
+				normals.Add(meshTransform.rotation * normalsArray[trianglesArray[j]]);
+				amount++;
+			}
+		}
+
+		for (int i = 0; i < triangles.Count; i += 3)
 		{
 			List<int> normalTriangles;
-			Vector3 normal = mesh.normals[triangles[i]];
+			Vector3 vertex1 = vertices[triangles[i]];
+			Vector3 vertex2 = vertices[triangles[i+1]];
+			Vector3 vertex3 = vertices[triangles[i+2]];
+			Vector3 normal = Vector3.Cross(vertex2 - vertex1, vertex3 - vertex1).normalized;
 			if (!normalIndices.TryGetValue(normal, out normalTriangles)) {
 				normalTriangles = new List<int>();
 				normalIndices.Add(normal, normalTriangles);
 			}
 
 			normalTriangles.Add(triangles[i]);
+			normalTriangles.Add(triangles[i+1]);
+			normalTriangles.Add(triangles[i+2]);
 		}
 
 		foreach (KeyValuePair<Vector3, List<int>> item in normalIndices)
@@ -45,8 +75,8 @@ public class NormalMeshSeparator : Behavior
 
 			for (int i = 0; i < trianglesList.Count; i++)
 			{
-				subMeshVertices[i] = mesh.vertices[trianglesList[i]];
-				subMeshNormals[i] = mesh.normals[trianglesList[i]];
+				subMeshVertices[i] = vertices[trianglesList[i]];
+				subMeshNormals[i] = normals[trianglesList[i]];
 				subMeshTriangles[i] = i;
 			}
 			subMesh.vertices = subMeshVertices;
@@ -56,13 +86,14 @@ public class NormalMeshSeparator : Behavior
 
 			meshCollider.sharedMesh = subMesh;
 			meshCollider.gameObject.layer = gameObject.layer;
+			meshCollider.gameObject.isStatic = true;
 		}
+		splitMesh.isStatic = true;
 	}
 
 	protected override void GetComponents()
 	{
 		base.GetComponents();
-		meshFilter = GetComponent<MeshFilter>();
 	}
 }
 
